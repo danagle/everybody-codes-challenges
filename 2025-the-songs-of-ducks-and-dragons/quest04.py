@@ -7,12 +7,10 @@ from math import ceil, floor
 from pathlib import Path
 
 
-def load_data(filepath: str) -> list[int]:
+def load_data(filepath: str, has_common_shafts: bool = False) -> list[int]:
+    if has_common_shafts:
+            return [tuple(map(int, line.split("|"))) for line in Path(filepath).read_text().strip().splitlines()]
     return [int(n) for n in Path(filepath).read_text().strip().splitlines()]
-
-
-def load_data_part3(filepath: str) -> list[tuple[int, int]]:
-    return [tuple(map(int, line.split("|"))) for line in Path(filepath).read_text().strip().splitlines()]
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q04_p1.txt") -> None:
@@ -32,7 +30,7 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q04_p2.txt") -> None:
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q04_p3.txt") -> None:
-    gears = load_data_part3(filepath)
+    gears = load_data(filepath, True)
     speed = 1
     
     (start_gear,), *between, (end_gear,) = gears
