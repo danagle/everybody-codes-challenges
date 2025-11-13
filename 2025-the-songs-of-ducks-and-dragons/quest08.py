@@ -14,7 +14,8 @@ def load_data(filepath: str) -> complex:
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q08_p1.txt") -> None:
     sequence = load_data(filepath)
-    total = sum(((a - b) % 16 == 0) for a, b in pairwise(sequence))
+    half = max(sequence) // 2
+    total = sum(((a - b) % half == 0) for a, b in pairwise(sequence))
 
     print(f"Part 1: {total}")
 
@@ -30,7 +31,7 @@ def intersects(chord1, chord2):
 def part2(filepath: str = "../input/everybody_codes_e2025_q08_p2.txt"):
     sequence = load_data(filepath)
     # Normalize chord endpoints so (a,b) == (b,a))
-    chords = [(min(a, b), max(a, b)) for a, b in pairwise(sequence)]
+    chords = [sorted(pair) for pair in pairwise(sequence)]
 
     total = sum(
         intersects(chords[i], chords[j])
@@ -43,7 +44,7 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q08_p2.txt"):
 
 def _part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
     sequence = load_data(filepath)
-    chords = [(min(a, b), max(a, b)) for a, b in pairwise(sequence)]
+    chords = [sorted(pair) for pair in pairwise(sequence)]
     num_points = 256
     max_crosses = 0
     
@@ -72,13 +73,11 @@ def part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
         # Slide the end of the chord forward around the circle
         for chord_end in range(chord_start + 2, num_points + 1):
             # Add new intersections that have entered the window
-            for point in chords[chord_end - 1]:
-                if not chord_start <= point < chord_end + 1:
-                    current += 1
+            current += sum(1 for point in chords[chord_end - 1] 
+                           if not chord_start <= point < chord_end + 1)
             # Remove intersections that are no longer inside the window
-            for point in chords[chord_end]:
-                if chord_start < point < chord_end - 1:
-                    current -= 1
+            current -= sum(1 for point in chords[chord_end] 
+                           if chord_start < point < chord_end - 1)
 
             max_crosses = max(max_crosses, current)
 
