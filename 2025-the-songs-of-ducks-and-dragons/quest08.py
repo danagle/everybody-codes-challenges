@@ -18,30 +18,18 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q08_p1.txt") -> None:
     print(f"Part 1: {total}")
 
 
-def between(a, b, x):
-    """Return True if x is between a and b clockwise on the circle."""
-    if a == b:
-        return False
-    if a < b:
-        return a < x < b
-    # Wrap-around case
-    return x > a or x < b
-
-
 def intersects(chord1, chord2):
     """Return True if chords intersect inside the circle."""
-    a, b = chord1
-    c, d = chord2
-    # Skip if any endpoints coincide
-    if len({a, b, c, d}) < 4:
+    if (chord1[0] in chord2) or (chord1[1] in chord2):
         return False
-    # Chords intersect if endpoints separate each other
-    return (between(a, b, c) != between(a, b, d)) and (between(c, d, a) != between(c, d, b))
+    # XOR: True if exactly one endpoint of chord2 lies strictly between chord1 endpoints
+    return (chord1[0] < chord2[0] < chord1[1]) ^ (chord1[0] < chord2[1] < chord1[1])
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q08_p2.txt"):
     sequence = load_data(filepath)
-    chords = [(a, b) for a, b in pairwise(sequence)]
+    # Normalize chord endpoints so (a,b) == (b,a))
+    chords = [(min(a, b), max(a, b)) for a, b in pairwise(sequence)]
 
     total = sum(
         intersects(chords[i], chords[j])
@@ -54,14 +42,13 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q08_p2.txt"):
 
 def part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
     sequence = load_data(filepath)
-    chords = [(a, b) for a, b in pairwise(sequence)]
+    chords = [(min(a, b), max(a, b)) for a, b in pairwise(sequence)]
     num_points = 256
     max_crosses = 0
-
+    
     for a, b in combinations(range(1, num_points + 1), 2):
-        cross_count = sum(intersects((a, b), chord) for chord in chords)
-        if cross_count > max_crosses:
-            max_crosses = cross_count
+        count = sum(intersects((a, b), chord) for chord in chords)
+        max_crosses = max(max_crosses, count)
 
     print("Part 3:", max_crosses)
 
