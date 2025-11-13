@@ -96,31 +96,34 @@ def part3_bruteforce(chords):
 
 
 def part3_slidingwindow(sequence):
-    num_points = 256
-    max_crosses = 0
+    num_points = max(sequence)
+    upper_bounds = num_points + 1
+    best = 0
 
-    # Build adjacency list of chords in sequence
-    chords = defaultdict(list)
+    # Frequency matrix of chords
+    frequency = [[0] * upper_bounds for _ in range(upper_bounds)]
     for a, b in pairwise(sequence):
-        chords[a].append(b)
-        chords[b].append(a)
+        frequency[a][b] += 1
+        frequency[b][a] += 1
 
-    # Iterate over all possible starting points of a chord
-    for chord_start in range(1, num_points + 1):
-        current = 0
+    # Precompute cumulative sums per row
+    sums = [[0] * upper_bounds for _ in range(upper_bounds)]
+    for a in range(1, upper_bounds):
+        for b in range(1, upper_bounds):
+            sums[a][b] = sums[a][b-1] + frequency[a][b]
 
-        # Slide the end of the chord forward around the circle
-        for chord_end in range(chord_start + 2, num_points + 1):
-            # Add new intersections that have entered the window
-            current += sum(1 for point in chords[chord_end - 1] 
-                           if not chord_start <= point < chord_end + 1)
-            # Remove intersections that are no longer inside the window
-            current -= sum(1 for point in chords[chord_end] 
-                           if chord_start < point < chord_end - 1)
+    # Sweep across all possible chords
+    for a in range(1, upper_bounds):
+        count = 0
+        for b in range(a+2, upper_bounds):
+            # Add chords that start crossing at the new boundary
+            count += sums[b-1][a-1] + sums[b-1][num_points] - sums[b-1][b]
+            # Remove chords that stop crossing when window expands
+            count -= sums[b][b-2] - sums[b][a]
+            # Update the best result
+            best = max(best, count + frequency[a][b])
 
-            max_crosses = max(max_crosses, current)
-
-    print("Part 3:", max_crosses)
+    print("Part 3:", best)
 
 
 def part3_sweep(chords):
