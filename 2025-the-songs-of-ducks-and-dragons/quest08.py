@@ -3,6 +3,7 @@ The Song of Ducks and Dragons [2025]
 Quest 8: The Art of Connection
 https://everybody.codes/event/2025/quests/8
 """
+from collections import defaultdict
 from itertools import combinations, pairwise
 from pathlib import Path
 
@@ -40,7 +41,7 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q08_p2.txt"):
     print("Part 2:", total)
 
 
-def part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
+def _part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
     sequence = load_data(filepath)
     chords = [(min(a, b), max(a, b)) for a, b in pairwise(sequence)]
     num_points = 256
@@ -49,6 +50,37 @@ def part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
     for a, b in combinations(range(1, num_points + 1), 2):
         count = sum(intersects((a, b), chord) for chord in chords)
         max_crosses = max(max_crosses, count)
+
+    print("Part 3:", max_crosses)
+
+
+def part3(filepath = "../input/everybody_codes_e2025_q08_p3.txt"):
+    sequence = load_data(filepath)
+    num_points = 256
+    max_crosses = 0
+
+    # Build adjacency list of chords in sequence
+    chords = defaultdict(list)
+    for a, b in pairwise(sequence):
+        chords[a].append(b)
+        chords[b].append(a)
+
+    # Iterate over all possible starting points of a chord
+    for chord_start in range(1, num_points + 1):
+        current = 0
+
+        # Slide the end of the chord forward around the circle
+        for chord_end in range(chord_start + 2, num_points + 1):
+            # Add new intersections that have entered the window
+            for point in chords[chord_end - 1]:
+                if not chord_start <= point < chord_end + 1:
+                    current += 1
+            # Remove intersections that are no longer inside the window
+            for point in chords[chord_end]:
+                if chord_start < point < chord_end - 1:
+                    current -= 1
+
+            max_crosses = max(max_crosses, current)
 
     print("Part 3:", max_crosses)
 
