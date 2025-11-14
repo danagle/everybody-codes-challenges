@@ -136,7 +136,7 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q09_p3.txt") -> None:
 
     # Find the largest family
     largest = max(families.sets(), key=len)
-    print("Part 3:", sum(i for i in largest))
+    print("Part 3:", sum(i+1 for i in largest))
 
 
 if __name__ == "__main__":
