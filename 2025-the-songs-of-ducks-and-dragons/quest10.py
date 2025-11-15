@@ -40,12 +40,13 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q10_p1.txt") -> None:
     
     for _ in range(max_moves):
         next_positions = {
-            (x + dx, y + dy)
-            for x, y in state
-            for dx, dy in MOVE_DELTAS
+            (r + dr, c + dc)
+            for r, c in state
+            for dr, dc in MOVE_DELTAS
+            if (0 <= (r + dr) < rows) and (0 <= (c + dc) < cols)
         }
         for r, c in next_positions:
-            if (0 <= r < rows) and (0 <= c < cols) and grid[r][c] == 'S':
+            if grid[r][c] == 'S':
                 grid[r][c] = 'X'
                 sheep_eaten += 1
         state = next_positions
