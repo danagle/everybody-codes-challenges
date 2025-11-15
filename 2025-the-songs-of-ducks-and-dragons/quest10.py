@@ -23,9 +23,9 @@ def load_file(filepath: str):
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q10_p1.txt") -> None:
     grid = load_file(filepath)
-    rows = len(grid)
-    cols = len(grid[0])
+    rows, cols = len(grid), len(grid[0])
     max_moves = 4
+
     dragon = None
     sheep_eaten = 0
     
@@ -111,8 +111,8 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q10_p3.txt") -> None:
     grid = load_file(filepath)
-    rows = len(grid)
-    cols = len(grid[0])
+    rows, cols = len(grid), len(grid[0])
+
     dragon = None
     sheep = set()
     
