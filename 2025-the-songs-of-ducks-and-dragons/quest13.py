@@ -60,7 +60,7 @@ def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
     print(f"Part 2: {dial_numbers[position]}")
 
 
-def part3(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
+def part3_bruteforce(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
     notes = load_tuples(filepath)
     turns = 202520252025
     
@@ -79,6 +79,27 @@ def part3(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
     position = turns % len(dial_numbers)
     
     print(f"Part 3: {dial_numbers[position]}")
+
+
+def part3(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
+    notes = load_tuples(filepath)
+    turns = 202520252025
+    result = None
+
+    numbers = [range(1, 1+1)] \
+        + [range(a, b+1, +1) for (a, b) in notes[0::2]] \
+        + [range(b, a-1, -1) for (a, b) in notes[1::2][::-1]]
+    
+    position = turns % sum(len(rng) for rng in numbers)
+
+    for rng in numbers:
+        if len(rng) <= position:
+            position -= len(rng)
+        else:
+            result = rng[position]
+            break
+
+    print(f"Part 3: {result}")
 
 
 if __name__ == "__main__":
