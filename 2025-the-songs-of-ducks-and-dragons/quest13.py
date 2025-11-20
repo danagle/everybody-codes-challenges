@@ -39,7 +39,7 @@ def part1(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
     print(f"Part 1: {dial_numbers[position]}")
 
 
-def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
+def part2_bruteforce(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
     notes = load_tuples(filepath)
     turns = 20252025
     
@@ -58,6 +58,49 @@ def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
     position = turns % len(dial_numbers)
     
     print(f"Part 2: {dial_numbers[position]}")
+
+
+def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
+    notes = load_tuples(filepath)
+    turns = 20252025
+    value = None
+
+    # Build forward (right) and backward (left) segments
+    forward = []
+    backward = []
+
+    for i, (a, b) in enumerate(notes):
+        if i % 2 == 0:
+            forward.append((a, b, 1))    # walk a -> b
+        else:
+            backward.append((a, b, -1))  # walk b -> a
+
+    # Dial order: [1], forward segments, reversed backward segments
+    dial = [(1, 1, 1)]
+    dial.extend(forward)
+    dial.extend(reversed(backward))
+
+    # Compute total size of the dial
+    length = sum(abs(a - b) + 1 for a, b, _ in dial)
+
+    # Effective index after wrapping
+    offset = turns % length
+
+    # Walk through segments until we land inside one
+    for a, b, direction in dial:
+        segment_length = (abs(b - a) + 1)
+
+        if offset < segment_length:
+            if direction == 1:
+                value = a + offset
+            else:
+                value = b - offset
+
+            break
+
+        offset -= segment_length
+        
+    print("Part 2:", value)
 
 
 def part3_bruteforce(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
