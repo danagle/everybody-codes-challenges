@@ -39,9 +39,8 @@ def part1(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
     print(f"Part 1: {dial_numbers[position]}")
 
 
-def part2_bruteforce(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
+def dial_with_allocation(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
     notes = load_tuples(filepath)
-    turns = 20252025
     
     left_side = []
     right_side = [1]
@@ -57,12 +56,11 @@ def part2_bruteforce(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
     dial_numbers = right_side + left_side[::-1]
     position = turns % len(dial_numbers)
     
-    print(f"Part 2: {dial_numbers[position]}")
+    return dial_numbers[position]
 
 
-def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
+def dial_with_segments(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
     notes = load_tuples(filepath)
-    turns = 20252025
     value = None
 
     # Build forward (right) and backward (left) segments
@@ -100,34 +98,12 @@ def part2(filepath="../input/everybody_codes_e2025_q13_p2.txt"):
 
         offset -= segment_length
         
-    print("Part 2:", value)
+    return value
 
 
-def part3_bruteforce(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
+def dial_with_ranges(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
     notes = load_tuples(filepath)
-    turns = 202520252025
-    
-    left_side = []
-    right_side = [1]
-
-    for index, pair in enumerate(notes):
-        a, b = pair
-        numbers = [n for n in range(a, b+1)]
-        if index % 2 == 0:
-            right_side.extend(numbers)
-        else:
-            left_side.extend(numbers)
-
-    dial_numbers = right_side + left_side[::-1]
-    position = turns % len(dial_numbers)
-    
-    print(f"Part 3: {dial_numbers[position]}")
-
-
-def part3(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
-    notes = load_tuples(filepath)
-    turns = 202520252025
-    result = None
+    value = None
 
     numbers = [range(1, 1+1)] \
         + [range(a, b+1, +1) for (a, b) in notes[0::2]] \
@@ -139,13 +115,40 @@ def part3(filepath="../input/everybody_codes_e2025_q13_p3.txt"):
         if len(rng) <= position:
             position -= len(rng)
         else:
-            result = rng[position]
+            value = rng[position]
             break
 
+    return value
+
+
+def part2():
+    turns = 20252025
+    filepath = "../input/everybody_codes_e2025_q13_p2.txt"
+    result = dial_with_segments(filepath, turns)
+    print(f"Part 2: {result}")
+
+
+def part3():
+    turns = 202520252025
+    filepath = "../input/everybody_codes_e2025_q13_p3.txt"
+    result = dial_with_ranges(filepath, turns)
     print(f"Part 3: {result}")
 
 
 if __name__ == "__main__":
+    #import time
+    #import tracemalloc
+
     part1()
     part2()
+    #tracemalloc.start()
+    #start = time.perf_counter()
     part3()
+    #current, peak = tracemalloc.get_traced_memory()
+    #end = time.perf_counter()
+    #print(f"Elapsed: {end - start} seconds")
+    #print(current, peak)
+
+    # dial_with_allocation peak:14370911263 (14.37 GB) (19.17216 seconds)
+    # dial_with_segments peak:98463 (99 KB)  (0.00089 seconds)
+    # dial_with_ranges peak:120667 (121 KB)  (0.00085 seconds)
