@@ -14,13 +14,16 @@ def load_numbers(filepath: str):
 
 
 def load_tuples(filepath: str):
-    return [
-        tuple(map(int, line.split('-'))) 
-        for line in Path(filepath).read_text().strip().splitlines()
-    ]
+    notes = []
+    for line in Path(filepath).read_text().strip().splitlines():
+        n, *rest = line.split('-')
+        first = int(n)
+        last = int(rest[0]) if rest else first
+        notes.append((first, last))
+    return notes
 
 
-def part1(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
+def part1_original(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
     notes = load_numbers(filepath)
     turns = 2025
     
@@ -121,6 +124,13 @@ def dial_with_ranges(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns
     return value
 
 
+def part1():
+    turns = 2025
+    filepath = "../input/everybody_codes_e2025_q13_p1.txt"
+    result = dial_with_segments(filepath, turns)
+    print(f"Part 1: {result}")
+
+
 def part2():
     turns = 20252025
     filepath = "../input/everybody_codes_e2025_q13_p2.txt"
@@ -131,7 +141,7 @@ def part2():
 def part3():
     turns = 202520252025
     filepath = "../input/everybody_codes_e2025_q13_p3.txt"
-    result = dial_with_ranges(filepath, turns)
+    result = dial_with_segments(filepath, turns)
     print(f"Part 3: {result}")
 
 
