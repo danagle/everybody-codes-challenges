@@ -154,11 +154,12 @@ def dijkstra(grid, cost_fn, start, goal):
     return -1  # unreachable
 
 
-def find_path_with_compression(directions):
+def find_path_with_compression(directions, algorithm="bfs"):
     """
     Simulates movement instructions on a 2D plane, compresses the coordinates
     to a smaller grid, marks walls along the path, and finds the shortest path
-    from the start to the final destination using BFS with decompression for real distances.
+    from the start to the final destination using A* / BFS / Dijkstra's algorithm
+    with decompression for real distances.
     """
     # Initialize position, facing direction, and sequence of positions
     pos = [0, 0]        # starting at origin
@@ -222,31 +223,29 @@ def find_path_with_compression(directions):
     grid[pos_idx[1]][pos_idx[0]] = ord(' ')
 
     # Use a cost function that converts compressed indices back to real distances
-    dist = bfs(
+    # Cost function: distance in real coordinates
+    cost_fn = lambda src, dst: abs(xpos[dst[0]] - xpos[src[0]]) + abs(ypos[dst[1]] - ypos[src[1]])
+
+    # Heuristic for A* (Manhattan in real coordinates)
+    heuristic = lambda x, y: abs(xpos[x] - xpos[pos_idx[0]]) + abs(ypos[y] - ypos[pos_idx[1]])
+
+    # Map algorithm names to functions
+    algorithms = {
+        "bfs": bfs,
+        "dijkstra": dijkstra,
+        "astar": lambda grid, cost, start, goal: a_star(grid, cost, start, goal, heuristic)
+    }
+
+    if algorithm not in algorithms:
+        raise ValueError(f"Unknown algorithm '{algorithm}'. Choose from {list(algorithms.keys())}")
+
+    # Call the selected algorithm
+    dist = algorithms[algorithm](
         grid,
-        lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
-                                  abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
+        cost_fn,
         (xmap[0], ymap[0]),       # start in compressed coordinates
         (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
     )
-    # Run Dijkstra's algorithm on compressed grid
-    #dist = dijkstra(
-    #    grid,
-    #    lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
-    #                              abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
-    #    (xmap[0], ymap[0]),       # start in compressed coordinates
-    #    (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
-    #)
-    ## A*
-    #goal_x, goal_y = pos_idx
-    #heuristic = lambda x, y: abs(xpos[x] - xpos[goal_x]) + abs(ypos[y] - ypos[goal_y])
-    #dist = a_star(
-    #    grid,
-    #    lambda src, dst: abs(xpos[dst[0]] - xpos[src[0]]) + abs(ypos[dst[1]] - ypos[src[1]]),
-    #    (xmap[0], ymap[0]),        # start in compressed coordinates
-    #    (pos_idx[0], pos_idx[1]),  # goal in compressed coordinates
-    #    heuristic
-    #)
 
     return dist
 
