@@ -3,133 +3,140 @@ The Song of Ducks and Dragons [2025]
 Quest 15: Definitely Not a Maze
 https://everybody.codes/event/2025/quests/15
 """
-import heapq
+from collections import deque
 from pathlib import Path
 
 
 def load_file(filepath):
-    return Path(filepath).read_text().strip().split(',')
+    return [(s[0], int(s[1:])) 
+        for s in Path(filepath).read_text().strip().split(',')]
 
 
-def is_wall(x, y, segments):
-    """Return True if (x, y) is on any of the path segments (walls)."""
-    for x1, y1, x2, y2 in segments:
-        if min(x1, x2) <= x <= max(x1, x2) and min(y1, y2) <= y <= max(y1, y2):
-            return True
-    return False
-
-
-def find_shortest_path(instructions):
+def bfs(grid, cost_fn, start, goal):
     """
-    Finds the shortest path from (0,0) to the final destination based on a sequence of
-    turn-and-step instructions while avoiding walls formed by the path itself.
-    Uses a coordinate-compressed grid and Dijkstra-like search.
+    Breadth-first search on the grid.
+    grid: 2D list of bytes representing the map
+    cost_fn: function that returns the cost of moving from one cell to another
+    start: tuple (x, y)
+    goal: tuple (x, y)
     """
-    # Directions: left, up, right, down
-    directions = [(-1, 0), (0, 1), (1, 0), (0, -1)]
-    direction_index = 0
-    start_x = start_y = 0
-    current_x = current_y = 0
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+    queue = deque()
+    queue.append((start, 0))
+    
+    while queue:
+        (x, y), dist = queue.popleft()
+        if (x, y) == goal:
+            return dist
+        
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == ord(' '):
+                grid[ny][nx] = ord('.')  # mark visited
+                cost = cost_fn((x, y), (nx, ny))
+                queue.append(((nx, ny), dist + cost))
+    
+    return None
 
-    wall_segments = []  # List of segments that represent walls
-    x_coords = [0]
-    y_coords = [0]
 
-    for instr in instructions:
-        turn_direction = instr[0]
-        steps = int(instr[1:])
+def find_path_with_compression(directions):
+    """
+    Simulates movement instructions on a 2D plane, compresses the coordinates
+    to a smaller grid, marks walls along the path, and finds the shortest path
+    from the start to the final destination using BFS with decompression for real distances.
+    """
+    # Each instruction has a turn ('L' or 'R') and a number of steps
+    #directions = [(s[0], int(s[1:])) for s in input_str.split(',')]
+    
+    # Initialize position, facing direction, and sequence of positions
+    pos = [0, 0]        # starting at origin
+    direction = [0, 1]  # facing north
+    seq = [tuple(pos)]  # list of all positions visited
 
-        # Update facing direction
-        direction_index = (direction_index + (3 if turn_direction == 'L' else 1)) % 4
-        dx, dy = directions[direction_index]
+    # Track all positions along the path
+    for turn, dist in directions:
+        # Update facing direction based on turn
+        if turn == 'L':
+            direction = [-direction[1], direction[0]]  # rotate left
+        elif turn == 'R':
+            direction = [direction[1], -direction[0]]  # rotate right
 
-        # Compute next position
-        next_x = current_x + dx * steps
-        next_y = current_y + dy * steps
+        # Move in the current direction by 'dist' steps
+        pos[0] += direction[0] * dist
+        pos[1] += direction[1] * dist
+        seq.append(tuple(pos))  # record new position
 
-        # Record segment of the movement as a wall
-        wall_segments.append((current_x, current_y, next_x, next_y))
+    # Collect all "interesting" coordinates for compression
+    # Include neighbors (-1, 0, +1) to ensure movement between adjacent cells
+    vx = set()
+    vy = set()
+    for x, y in seq:
+        for d in (-1, 0, 1):
+            vx.add(x + d)
+            vy.add(y + d)
 
-        # Update current position
-        current_x, current_y = next_x, next_y
+    # Create sorted lists for compressed coordinates
+    xpos = sorted(vx)
+    ypos = sorted(vy)
 
-        # Track coordinates for compression (include neighbors for safe movement)
-        x_coords.extend([current_x, current_x - 1, current_x + 1])
-        y_coords.extend([current_y, current_y - 1, current_y + 1])
+    # Maps from real coordinate -> compressed index
+    xmap = {x: i for i, x in enumerate(xpos)}
+    ymap = {y: i for i, y in enumerate(ypos)}
 
-    end_x, end_y = current_x, current_y
+    # Initialize compressed grid
+    grid = [[ord(' ')] * len(xpos) for _ in range(len(ypos))]
 
-    # Coordinate compression
-    # Remove duplicates and sort coordinates to create a compressed grid
-    compressed_x = sorted(set(x_coords))
-    compressed_y = sorted(set(y_coords))
-    grid_width, grid_height = len(compressed_x), len(compressed_y)
+    # Trace walls on the compressed grid along the path
+    pos_idx = [xmap[0], ymap[0]]  # starting position in compressed coordinates
+    grid[pos_idx[1]][pos_idx[0]] = ord('S')  # mark start
 
-    # Map start and end positions to compressed indices
-    start_idx_x = compressed_x.index(start_x)
-    start_idx_y = compressed_y.index(start_y)
-    end_idx_x = compressed_x.index(end_x)
-    end_idx_y = compressed_y.index(end_y)
+    for target in seq[1:]:
+        npos_idx = [xmap[target[0]], ymap[target[1]]]  # next position in compressed space
 
-    # Dijkstra-like search on compressed grid
-    priority_queue = [(0, start_idx_x, start_idx_y)]  # (cost, x_index, y_index)
-    visited = {}
+        # Determine step direction for each axis
+        dx = (npos_idx[0] - pos_idx[0])
+        dy = (npos_idx[1] - pos_idx[1])
+        dx = 0 if dx == 0 else (dx // abs(dx))
+        dy = 0 if dy == 0 else (dy // abs(dy))
 
-    while priority_queue:
-        current_cost, current_idx_x, current_idx_y = heapq.heappop(priority_queue)
+        # Fill in all intermediate cells along the straight segment
+        while pos_idx != npos_idx:
+            pos_idx[0] += dx
+            pos_idx[1] += dy
+            grid[pos_idx[1]][pos_idx[0]] = ord('#')  # mark wall
+        pos_idx = npos_idx  # move to next segment start
 
-        # Check if we reached the destination
-        if current_idx_x == end_idx_x and current_idx_y == end_idx_y:
-            return str(current_cost)
+    # Clear the destination cell to ensure it is walkable
+    grid[pos_idx[1]][pos_idx[0]] = ord(' ')
 
-        # Skip if already visited with a lower cost
-        node_key = (current_idx_x, current_idx_y)
-        if node_key in visited and visited[node_key] <= current_cost:
-            continue
-        visited[node_key] = current_cost
+    # Run BFS on compressed grid
+    # Use a cost function that converts compressed indices back to real distances
+    dist = bfs(
+        grid,
+        lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
+                                  abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
+        (xmap[0], ymap[0]),       # start in compressed coordinates
+        (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
+    )
 
-        # Explore neighboring cells (up, down, left, right)
-        for move_dx, move_dy in [(0, 1), (0, -1), (1, 0), (-1, 0)]:
-            neighbor_idx_x = current_idx_x + move_dx
-            neighbor_idx_y = current_idx_y + move_dy
-
-            # Skip out-of-bounds indices
-            if not (0 <= neighbor_idx_x < grid_width and 0 <= neighbor_idx_y < grid_height):
-                continue
-
-            # Convert compressed indices back to real coordinates
-            neighbor_x = compressed_x[neighbor_idx_x]
-            neighbor_y = compressed_y[neighbor_idx_y]
-
-            # Always allow start and end positions, skip walls otherwise
-            if not ((neighbor_x == start_x and neighbor_y == start_y) or
-                    (neighbor_x == end_x and neighbor_y == end_y)) and \
-                    is_wall(neighbor_x, neighbor_y, wall_segments):
-                continue
-
-            # Cost to move is Manhattan distance between compressed grid cells
-            step_cost = abs(neighbor_x - compressed_x[current_idx_x]) + \
-                        abs(neighbor_y - compressed_y[current_idx_y])
-            heapq.heappush(priority_queue, (current_cost + step_cost, neighbor_idx_x, neighbor_idx_y))
-
-    return -1
+    return dist
 
 
 def part1(filepath="../input/everybody_codes_e2025_q15_p1.txt"):
     notes = load_file(filepath)
-    result = find_shortest_path(notes)
+    result = find_path_with_compression(notes)
     print("Part 1:", result)
 
 
 def part2(filepath="../input/everybody_codes_e2025_q15_p2.txt"):
     notes = load_file(filepath)
-    result = find_shortest_path(notes)
+    result = find_path_with_compression(notes)
     print("Part 2:", result)
 
 
 def part3(filepath="../input/everybody_codes_e2025_q15_p3.txt"):
     notes = load_file(filepath)
-    result = find_shortest_path(notes)
+    result = find_path_with_compression(notes)
     print("Part 3:", result)
 
 
@@ -137,3 +144,4 @@ if __name__ == "__main__":
     part1()
     part2()
     part3()
+ 
