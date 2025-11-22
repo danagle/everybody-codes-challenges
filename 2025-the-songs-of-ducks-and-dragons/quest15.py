@@ -12,9 +12,9 @@ def load_file(filepath):
         for s in Path(filepath).read_text().strip().split(',')]
 
 
-def bfs(grid, cost_fn, start, goal):
+def dijkstra(grid, cost_fn, start, goal):
     """
-    Breadth-first search on the grid.
+    Dijkstra’s algorithm.
     grid: 2D list of bytes representing the map
     cost_fn: function that returns the cost of moving from one cell to another
     start: tuple (x, y)
@@ -45,9 +45,6 @@ def find_path_with_compression(directions):
     to a smaller grid, marks walls along the path, and finds the shortest path
     from the start to the final destination using BFS with decompression for real distances.
     """
-    # Each instruction has a turn ('L' or 'R') and a number of steps
-    #directions = [(s[0], int(s[1:])) for s in input_str.split(',')]
-    
     # Initialize position, facing direction, and sequence of positions
     pos = [0, 0]        # starting at origin
     direction = [0, 1]  # facing north
@@ -109,9 +106,9 @@ def find_path_with_compression(directions):
     # Clear the destination cell to ensure it is walkable
     grid[pos_idx[1]][pos_idx[0]] = ord(' ')
 
-    # Run BFS on compressed grid
+    # Run Dijkstra's algorithm on compressed grid
     # Use a cost function that converts compressed indices back to real distances
-    dist = bfs(
+    dist = dijkstra(
         grid,
         lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
                                   abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
