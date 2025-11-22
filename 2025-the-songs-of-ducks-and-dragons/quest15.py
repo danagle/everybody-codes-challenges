@@ -11,18 +11,18 @@ from pathlib import Path
 
 def load_file(filepath):
     return [(s[0], int(s[1:])) 
-        for s in Path(filepath).read_text().strip().split(',')]
+            for s in Path(filepath).read_text().strip().split(',')]
 
 
 def a_star(grid, cost_fn, start, goal, heuristic):
     """
     A* search on a compressed grid.
 
-    grid: 2D list of bytes (optional: we mutate it only when finalizing a node)
+    grid: 2D list of bytes
     cost_fn: function ((x1,y1), (x2,y2)) -> movement cost
     start: (x, y)
     goal: (x, y)
-    heuristic: function (x, y) -> estimated cost to goal (admissible)
+    heuristic: function (x, y) -> estimated cost to goal
     """
     directions = [(0,1), (1,0), (0,-1), (-1,0)]
     INF = math.inf
@@ -154,9 +154,9 @@ def dijkstra(grid, cost_fn, start, goal):
     return -1  # unreachable
 
 
-def find_path_with_compression(directions, algorithm="bfs"):
+def shortest_distance_with_compression(directions, algorithm="bfs"):
     """
-    Simulates movement instructions on a 2D plane, compresses the coordinates
+    Simulates movement instructions on a 2D grid, compresses the coordinates
     to a smaller grid, marks walls along the path, and finds the shortest path
     from the start to the final destination using A* / BFS / Dijkstra's algorithm
     with decompression for real distances.
@@ -252,19 +252,19 @@ def find_path_with_compression(directions, algorithm="bfs"):
 
 def part1(filepath="../input/everybody_codes_e2025_q15_p1.txt"):
     notes = load_file(filepath)
-    result = find_path_with_compression(notes)
+    result = shortest_distance_with_compression(notes)
     print("Part 1:", result)
 
 
 def part2(filepath="../input/everybody_codes_e2025_q15_p2.txt"):
     notes = load_file(filepath)
-    result = find_path_with_compression(notes)
+    result = shortest_distance_with_compression(notes)
     print("Part 2:", result)
 
 
 def part3(filepath="../input/everybody_codes_e2025_q15_p3.txt"):
     notes = load_file(filepath)
-    result = find_path_with_compression(notes)
+    result = shortest_distance_with_compression(notes)
     print("Part 3:", result)
 
 
