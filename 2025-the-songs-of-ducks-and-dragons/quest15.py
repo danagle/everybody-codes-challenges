@@ -4,6 +4,8 @@ Quest 15: Definitely Not a Maze
 https://everybody.codes/event/2025/quests/15
 """
 from collections import deque
+import heapq
+import math
 from pathlib import Path
 
 
@@ -12,11 +14,70 @@ def load_file(filepath):
         for s in Path(filepath).read_text().strip().split(',')]
 
 
-def dijkstra(grid, cost_fn, start, goal):
+def a_star(grid, cost_fn, start, goal, heuristic):
     """
-    Dijkstra’s algorithm.
+    A* search on a compressed grid.
+
+    grid: 2D list of bytes (optional: we mutate it only when finalizing a node)
+    cost_fn: function ((x1,y1), (x2,y2)) -> movement cost
+    start: (x, y)
+    goal: (x, y)
+    heuristic: function (x, y) -> estimated cost to goal (admissible)
+    """
+    directions = [(0,1), (1,0), (0,-1), (-1,0)]
+    INF = math.inf
+
+    g_score = {start: 0}
+    open_heap = []
+    heapq.heappush(open_heap, (heuristic(*start), start))
+
+    closed = set()  # nodes whose shortest path is finalized
+
+    while open_heap:
+        f, current = heapq.heappop(open_heap)
+
+        # skip entries that are stale (we may have pushed duplicates)
+        if current in closed:
+            continue
+
+        # finalize current
+        closed.add(current)
+        cx, cy = current
+
+        # optional: mark grid when node is finalized (not when discovered)
+        # if you want to keep the side-effect behavior similar to your original
+        if 0 <= cy < len(grid) and 0 <= cx < len(grid[0]):
+            if grid[cy][cx] == ord(' '):
+                grid[cy][cx] = ord('.')  # mark finalized
+
+        if current == goal:
+            return g_score[current]
+
+        for dx, dy in directions:
+            nx, ny = cx + dx, cy + dy
+
+            if not (0 <= nx < len(grid[0]) and 0 <= ny < len(grid)):
+                continue
+            if grid[ny][nx] != ord(' '):
+                # treat non-space as non-walkable (walls, start, etc.)
+                continue
+
+            neighbor = (nx, ny)
+            tentative_g = g_score[current] + cost_fn(current, neighbor)
+
+            if tentative_g < g_score.get(neighbor, INF):
+                g_score[neighbor] = tentative_g
+                heapq.heappush(open_heap, (tentative_g + heuristic(nx, ny), neighbor))
+
+    return -1
+
+
+def bfs(grid, cost_fn, start, goal):
+    """
+    Breath-first search algorithm.
+    
     grid: 2D list of bytes representing the map
-    cost_fn: function that returns the cost of moving from one cell to another
+    cost_fn: function ((x1,y1), (x2,y2)) -> movement cost
     start: tuple (x, y)
     goal: tuple (x, y)
     """
@@ -36,7 +97,61 @@ def dijkstra(grid, cost_fn, start, goal):
                 cost = cost_fn((x, y), (nx, ny))
                 queue.append(((nx, ny), dist + cost))
     
-    return None
+    return -1
+
+
+def dijkstra(grid, cost_fn, start, goal):
+    """
+    Dijkstra's algorithm using a min-heap.
+    
+    grid: 2D list of bytes
+    cost_fn: function ((x1,y1), (x2,y2)) -> movement cost
+    start: (x, y)
+    goal: (x, y)
+    """
+    directions = [(0,1), (1,0), (0,-1), (-1,0)]
+    INF = math.inf
+
+    # distances from start
+    dist = {start: 0}
+
+    # priority queue of (distance, (x, y))
+    heap = []
+    heapq.heappush(heap, (0, start))
+
+    # finalized nodes
+    closed = set()
+
+    while heap:
+        current_dist, (x, y) = heapq.heappop(heap)
+
+        if (x, y) in closed:
+            continue
+        closed.add((x, y))
+
+        if (x, y) == goal:
+            return current_dist
+
+        for dx, dy in directions:
+            nx, ny = x + dx, y + dy
+
+            # Check bounds and walkability
+            if not (0 <= nx < len(grid[0]) and 0 <= ny < len(grid)):
+                continue
+            if grid[ny][nx] != ord(' '):
+                continue
+
+            neighbor = (nx, ny)
+
+            cost = cost_fn((x, y), neighbor)
+            new_dist = current_dist + cost
+
+            # Relaxation step
+            if new_dist < dist.get(neighbor, INF):
+                dist[neighbor] = new_dist
+                heapq.heappush(heap, (new_dist, neighbor))
+
+    return -1  # unreachable
 
 
 def find_path_with_compression(directions):
@@ -106,15 +221,32 @@ def find_path_with_compression(directions):
     # Clear the destination cell to ensure it is walkable
     grid[pos_idx[1]][pos_idx[0]] = ord(' ')
 
-    # Run Dijkstra's algorithm on compressed grid
     # Use a cost function that converts compressed indices back to real distances
-    dist = dijkstra(
+    dist = bfs(
         grid,
         lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
                                   abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
         (xmap[0], ymap[0]),       # start in compressed coordinates
         (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
     )
+    # Run Dijkstra's algorithm on compressed grid
+    #dist = dijkstra(
+    #    grid,
+    #    lambda src_dst, next_dst: abs(xpos[next_dst[0]] - xpos[src_dst[0]]) +
+    #                              abs(ypos[next_dst[1]] - ypos[src_dst[1]]),
+    #    (xmap[0], ymap[0]),       # start in compressed coordinates
+    #    (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
+    #)
+    ## A*
+    #goal_x, goal_y = pos_idx
+    #heuristic = lambda x, y: abs(xpos[x] - xpos[goal_x]) + abs(ypos[y] - ypos[goal_y])
+    #dist = a_star(
+    #    grid,
+    #    lambda src, dst: abs(xpos[dst[0]] - xpos[src[0]]) + abs(ypos[dst[1]] - ypos[src[1]]),
+    #    (xmap[0], ymap[0]),        # start in compressed coordinates
+    #    (pos_idx[0], pos_idx[1]),  # goal in compressed coordinates
+    #    heuristic
+    #)
 
     return dist
 
