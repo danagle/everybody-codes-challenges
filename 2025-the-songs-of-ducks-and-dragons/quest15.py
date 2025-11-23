@@ -306,7 +306,7 @@ def part3(filepath="../input/everybody_codes_e2025_q15_p3.txt"):
 
 
 if __name__ == "__main__":
-    #part1()
-    #part2()
+    part1()
+    part2()
     part3()
  
