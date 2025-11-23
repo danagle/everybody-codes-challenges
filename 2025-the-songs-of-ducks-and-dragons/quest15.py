@@ -15,7 +15,7 @@ def load_file(filepath):
 
 
 def a_star(grid, cost_fn, start, goal, heuristic):
-    """
+    """ 
     A* search on a compressed grid.
 
     grid: 2D list of bytes
@@ -158,96 +158,133 @@ def shortest_distance_with_compression(directions, algorithm="bfs"):
     """
     Simulates movement instructions on a 2D grid, compresses the coordinates
     to a smaller grid, marks walls along the path, and finds the shortest path
-    from the start to the final destination using A* / BFS / Dijkstra's algorithm
-    with decompression for real distances.
+    using BFS / Dijkstra / A* on the compressed grid.
     """
     # Initialize position, facing direction, and sequence of positions
-    pos = [0, 0]        # starting at origin
-    direction = [0, 1]  # facing north
-    seq = [tuple(pos)]  # list of all positions visited
+    pos = [0, 0]         # starting position
+    direction = [0, 1]   # facing north
+    seq = [tuple(pos)]   # visit list
 
     # Track all positions along the path
     for turn, dist in directions:
-        # Update facing direction based on turn
+        # update facing direction
         if turn == 'L':
-            direction = [-direction[1], direction[0]]  # rotate left
-        elif turn == 'R':
-            direction = [direction[1], -direction[0]]  # rotate right
+            direction = [-direction[1], direction[0]]
+        else:  # 'R'
+            direction = [direction[1], -direction[0]]
 
         # Move in the current direction by 'dist' steps
         pos[0] += direction[0] * dist
         pos[1] += direction[1] * dist
-        seq.append(tuple(pos))  # record new position
+        seq.append(tuple(pos))
 
-    # Collect all "interesting" coordinates for compression
-    # Include neighbors (-1, 0, +1) to ensure movement between adjacent cells
+    # Collect compressed coordinate candidates
+    # Only real endpoints + 2 inflation coords per turn
     vx = set()
     vy = set()
-    for x, y in seq:
-        for d in (-1, 0, 1):
-            vx.add(x + d)
-            vy.add(y + d)
 
-    # Create sorted lists for compressed coordinates
+    for x, y in seq:
+        vx.add(x)
+        vy.add(y)
+
+    # simulate again to detect turns
+    pos = seq[0]
+    direction = [0, 1]  # reset to north
+
+    turn_right_pairs = {
+        ((0, 1), (1, 0)),    # N -> E
+        ((0, -1), (-1, 0)),  # S -> W
+        ((-1, 0), (0, -1)),  # W -> S
+        ((1, 0), (0, 1)),    # E -> N
+    }
+
+    for (turn, dist), next_pos in zip(directions, seq[1:]):
+        x, y = pos
+        old_dir = tuple(direction)
+
+        # update direction to detect turn type
+        if turn == 'L':
+            direction = [-direction[1], direction[0]]
+        else:
+            direction = [direction[1], -direction[0]]
+
+        new_dir = tuple(direction)
+
+        if old_dir != new_dir:
+            # RIGHT TURN corner inflation
+            if (old_dir, new_dir) in turn_right_pairs:
+                vx.update([x - 1, x + 1])
+                vy.update([y - 1, y + 1])
+            else:
+                # LEFT TURN corner inflation
+                vx.update([x + 1, x - 1])
+                vy.update([y - 1, y + 1])
+
+        pos = next_pos
+
+    # sorted coordinate lists
     xpos = sorted(vx)
     ypos = sorted(vy)
 
-    # Maps from real coordinate -> compressed index
+    # maps from real coordinate to compressed index
     xmap = {x: i for i, x in enumerate(xpos)}
     ymap = {y: i for i, y in enumerate(ypos)}
 
-    # Initialize compressed grid
+    # Build compressed grid
     grid = [[ord(' ')] * len(xpos) for _ in range(len(ypos))]
 
     # Trace walls on the compressed grid along the path
-    pos_idx = [xmap[0], ymap[0]]  # starting position in compressed coordinates
-    grid[pos_idx[1]][pos_idx[0]] = ord('S')  # mark start
+    cx, cy = xmap[0], ymap[0]  # starting position in compressed coordinates
+    grid[cy][cx] = ord('S')    # mark start
 
     for target in seq[1:]:
-        npos_idx = [xmap[target[0]], ymap[target[1]]]  # next position in compressed space
+        # next position in compressed space
+        nx, ny = xmap[target[0]], ymap[target[1]]
 
         # Determine step direction for each axis
-        dx = (npos_idx[0] - pos_idx[0])
-        dy = (npos_idx[1] - pos_idx[1])
-        dx = 0 if dx == 0 else (dx // abs(dx))
-        dy = 0 if dy == 0 else (dy // abs(dy))
+        dx = (nx - cx)
+        dy = (ny - cy)
+        dx = 0 if dx == 0 else dx // abs(dx)
+        dy = 0 if dy == 0 else dy // abs(dy)
 
         # Fill in all intermediate cells along the straight segment
-        while pos_idx != npos_idx:
-            pos_idx[0] += dx
-            pos_idx[1] += dy
-            grid[pos_idx[1]][pos_idx[0]] = ord('#')  # mark wall
-        pos_idx = npos_idx  # move to next segment start
+        while (cx, cy) != (nx, ny):
+            cx += dx
+            cy += dy
+            grid[cy][cx] = ord('#')
 
     # Clear the destination cell to ensure it is walkable
-    grid[pos_idx[1]][pos_idx[0]] = ord(' ')
+    grid[cy][cx] = ord(' ')
+
+    # Search on compressed grid
+    start = (xmap[0], ymap[0])
+    goal = (cx, cy)
 
     # Use a cost function that converts compressed indices back to real distances
     # Cost function: distance in real coordinates
-    cost_fn = lambda src, dst: abs(xpos[dst[0]] - xpos[src[0]]) + abs(ypos[dst[1]] - ypos[src[1]])
+    cost_fn = lambda src, dst: (
+        abs(xpos[dst[0]] - xpos[src[0]]) +
+        abs(ypos[dst[1]] - ypos[src[1]])
+    )
 
     # Heuristic for A* (Manhattan in real coordinates)
-    heuristic = lambda x, y: abs(xpos[x] - xpos[pos_idx[0]]) + abs(ypos[y] - ypos[pos_idx[1]])
+    heuristic = lambda x, y: (
+        abs(xpos[x] - xpos[goal[0]]) +
+        abs(ypos[y] - ypos[goal[1]])
+    )
 
     # Map algorithm names to functions
     algorithms = {
         "bfs": bfs,
         "dijkstra": dijkstra,
-        "astar": lambda grid, cost, start, goal: a_star(grid, cost, start, goal, heuristic)
+        "astar": lambda grid, cost, start, goal:
+            a_star(grid, cost, start, goal, heuristic)
     }
 
     if algorithm not in algorithms:
-        raise ValueError(f"Unknown algorithm '{algorithm}'. Choose from {list(algorithms.keys())}")
+        raise ValueError(f"Unknown algorithm '{algorithm}'.")
 
-    # Call the selected algorithm
-    dist = algorithms[algorithm](
-        grid,
-        cost_fn,
-        (xmap[0], ymap[0]),       # start in compressed coordinates
-        (pos_idx[0], pos_idx[1])  # goal in compressed coordinates
-    )
-
-    return dist
+    return algorithms[algorithm](grid, cost_fn, start, goal)
 
 
 def part1(filepath="../input/everybody_codes_e2025_q15_p1.txt"):
@@ -269,7 +306,7 @@ def part3(filepath="../input/everybody_codes_e2025_q15_p3.txt"):
 
 
 if __name__ == "__main__":
-    part1()
-    part2()
+    #part1()
+    #part2()
     part3()
  
