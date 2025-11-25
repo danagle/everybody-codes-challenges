@@ -69,8 +69,8 @@ def part3(filepath="../input/everybody_codes_e2025_q16_p3.txt"):
     # The limit we must not exceed when summing contributions of spells
     target = 202520252025000
 
-    # Compute spell numbers, then sort them so we can break early in the cost loop
-    spells = sorted(get_spell_numbers(numbers))
+    # Compute spell numbers
+    spells = get_spell_numbers(numbers)
     spells_local = spells
 
     # Binary search boundaries for the answer
