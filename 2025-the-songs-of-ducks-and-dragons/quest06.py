@@ -7,20 +7,20 @@ from pathlib import Path
 
 def load_data(filepath: str) -> str:
     """Load and return stripped text from a file."""
-    return Path(filepath).read_text().strip()
+    return Path(filepath).read_text(encoding="utf-8").strip()
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q06_p1.txt"):
     """Count all 'A's before each 'a' and print the total sum."""
     notes = load_data(filepath)
-    count_A = 0
+    mentors = 0  # Count of 'A'
     total = 0
 
     for ch in notes:
         if ch == 'A':
-            count_A += 1
+            mentors += 1
         elif ch == 'a':
-            total += count_A
+            total += mentors
 
     print("Part 1:", total)
 
@@ -41,13 +41,15 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q06_p2.txt"):
     print("Part 2:", total)
 
 
-
-def part3(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt"):
-    N = 1000
+def part3(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt",
+          window_size: int = 1000):
+    """
+    What is the total number of possible novice-mentor pairs?
+    """
     notes = load_data(filepath)
     s = notes * 1000
     length = len(s)
-    
+
     # Initialize prefix sums for A, B, C
     prefix = {ch: [0] * (length + 1) for ch in 'ABC'}
 
@@ -60,8 +62,8 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt"):
     for i, ch in enumerate(s):
         if ch in result:
             upper = ch.upper()
-            start = max(0, i - N)
-            end = min(length - 1, i + N)
+            start = max(0, i - window_size)
+            end = min(length - 1, i + window_size)
             count = prefix[upper][end + 1] - prefix[upper][start]
             result[ch].append(count)
 
@@ -69,7 +71,9 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt"):
     print("Part 3:", total)
 
 
-def part3_new(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt", N: int = 1000, repeat: int = 1000):
+def part3_new(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt",
+              window_size: int = 1000,
+              repeat: int = 1000):
     """
     Count uppercase letters within ±N places of each lowercase letter
     using string padding to handle boundary windows.
@@ -78,15 +82,15 @@ def part3_new(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt", N: in
     total = 0
 
     # Pad string to safely handle windows that extend beyond start/end
-    loop = data[-N:] + data + data[:N]
-    start_pad = data + data[:N]
-    end_pad = data[-N:] + data
+    loop = data[-window_size:] + data + data[:window_size]
+    start_pad = data + data[:window_size]
+    end_pad = data[-window_size:] + data
 
     # Main loop over the middle portion of the padded string
-    for idx in range(N, len(data) + N):
+    for idx in range(window_size, len(data) + window_size):
         if loop[idx].islower():
-            start = max(idx - N, 0)
-            end = idx + N + 1
+            start = max(idx - window_size, 0)
+            end = idx + window_size + 1
             total += loop[start:end].count(loop[idx].upper())
 
     # Adjust for repeated strings
@@ -95,15 +99,15 @@ def part3_new(filepath: str = "../input/everybody_codes_e2025_q06_p3.txt", N: in
     # Handle boundary windows at the start
     for idx in range(len(data)):
         if start_pad[idx].islower():
-            start = max(idx - N, 0)
-            end = idx + N + 1
+            start = max(idx - window_size, 0)
+            end = idx + window_size + 1
             total += start_pad[start:end].count(start_pad[idx].upper())
 
     # Handle boundary windows at the end
-    for idx in range(N, len(data) + N):
+    for idx in range(window_size, len(data) + window_size):
         if end_pad[idx].islower():
-            start = max(idx - N, 0)
-            end = idx + N + 1
+            start = max(idx - window_size, 0)
+            end = idx + window_size + 1
             total += end_pad[start:end].count(end_pad[idx].upper())
 
     print("Part 3:", total)

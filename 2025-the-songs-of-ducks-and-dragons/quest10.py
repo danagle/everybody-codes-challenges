@@ -14,21 +14,23 @@ MOVE_DELTAS = [
 
 
 def load_file(filepath: str):
+    """Read the 2-D grid from the input text file."""
     return [
-        list(line) 
-        for line in Path(filepath).read_text().strip().splitlines() 
+        list(line)
+        for line in Path(filepath).read_text(encoding="utf-8").strip().splitlines()
         if line.strip()
     ]
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q10_p1.txt") -> None:
+    """How many sheep are within the range of 4 dragon moves?"""
     grid = load_file(filepath)
     rows, cols = len(grid), len(grid[0])
     max_moves = 4
 
     dragon = None
     sheep_eaten = 0
-    
+
     dragon = next(
         (r, c)
         for r in range(rows)
@@ -37,7 +39,7 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q10_p1.txt") -> None:
     )
 
     state = {dragon}
-    
+
     for _ in range(max_moves):
         next_positions = {
             (r + dr, c + dc)
@@ -54,8 +56,8 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q10_p1.txt") -> None:
     print("Part 1:", sheep_eaten)
 
 
-def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
-    grid = load_file(filepath)
+def precompute_states(grid):
+    """Pre-compute all sheep states across 20 moves."""
     rows, cols = len(grid), len(grid[0])
     max_moves = 20
 
@@ -67,16 +69,30 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
                 dragon = (r, c)
             elif grid[r][c] == 'S':
                 sheep.append((r, c))
-    
+
     # Pre-compute all sheep states
     # Map time -> (row, col) -> set of initial sheep coords at that cell.
-    sheep_states = defaultdict(lambda: defaultdict(set))
-    [
-        sheep_states[t][(r + t, c)].add((r, c))
+    states = defaultdict(lambda: defaultdict(set))
+    _ = [
+        states[t][(r + t, c)].add((r, c))
         for r, c in sheep
         for t in range(max_moves + 1)
         if r + t < rows
     ]
+
+    return states, dragon
+
+
+def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
+    """
+    How many sheep can the dragon eat in 20 rounds of the game 
+    in all possible variants of dragon moves?
+    """
+    grid = load_file(filepath)
+    rows, cols = len(grid), len(grid[0])
+    max_moves = 20
+
+    sheep_states, dragon = precompute_states(grid)
 
     # Breadth-First Search
     eaten = set()
@@ -90,8 +106,9 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
         if moves_made > max_moves or not (0 <= r < rows and 0 <= c < cols):
             continue
 
-        if (dragon_state) in seen:
+        if dragon_state in seen:
             continue
+
         seen.add(dragon_state)
 
         # Check for sheep after first dragon move
@@ -110,15 +127,19 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q10_p2.txt") -> None:
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q10_p3.txt") -> None:
+    """
+    How many unique sequences of moves are there in which the dragon
+    manages to eat all of the sheep?
+    """
     grid = load_file(filepath)
     rows, cols = len(grid), len(grid[0])
 
     dragon = None
     sheep = set()
-    
+
     # There are hideouts '#' clustered at the bottom
     safety = [inf for _ in range(cols)]
-    
+
     for r in range(rows):
         for c in range(cols):
             ch = grid[r][c]
@@ -128,10 +149,10 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q10_p3.txt") -> None:
                     dragon = (r, c)
                 elif ch == 'S':
                     sheep.add((r, c))
-    
+
     # memoization for recursion
-    cache = dict()
-    
+    cache = {}
+
     def count_sequences(dragon, sheep, sheep_turn):
         """Return number of ways the dragon can eat all the sheep."""
         nonlocal grid, rows, cols, cache
@@ -152,7 +173,8 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q10_p3.txt") -> None:
                 if next_r == safety[sheep_c]:
                     any_moved = True
                 # Valid downward move
-                elif next_r < rows and (grid[next_r][sheep_c] == '#' or (next_r, sheep_c) != dragon):
+                elif next_r < rows and (grid[next_r][sheep_c] == '#' or
+                                        (next_r, sheep_c) != dragon):
                     next_sheep = (sheep - {(sheep_r, sheep_c)}) | {(next_r, sheep_c)}
                     total += count_sequences(dragon, next_sheep, False)
                     any_moved = True

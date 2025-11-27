@@ -8,11 +8,13 @@ from pathlib import Path
 
 
 def load_data(filepath: str) -> list[int, int]:
-    text = Path(filepath).read_text().strip()
+    """Read the list of numbers from the input file."""
+    text = Path(filepath).read_text(encoding="utf-8").strip()
     return [int(n) for n in text.split(',')]
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q03_p1.txt") -> None:
+    """What is the largest possible set of crates that can be formed from a given list?"""
     notes = load_data(filepath)
     result = sum(set(notes))
 
@@ -20,17 +22,25 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q03_p1.txt") -> None:
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q03_p2.txt") -> None:
+    """
+    Pack the mushroom into exactly 20 crates. 
+    What is the smallest possible set of the crates that can be used for this purpose?
+    """
     notes = load_data(filepath)
     result = sum(sorted(set(notes))[:20])
 
     print("Part 2:", result)
-    
+
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q03_p3.txt") -> None:
+    """
+    Pack the given list as efficiently as possible.
+    How many sets do you need for this?
+    """
     notes = load_data(filepath)
     _, result = Counter(notes).most_common(1)[0]
 
-    print("Part 3:", result)      
+    print("Part 3:", result)
 
 
 if __name__ == "__main__":

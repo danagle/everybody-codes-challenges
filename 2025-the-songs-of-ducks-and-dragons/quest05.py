@@ -21,7 +21,7 @@ def build_fishbone(numbers: List[int]) -> List[dict]:
     spine = [{"value": numbers[0], "left": None, "right": None}]
     for number in numbers[1:]:
         for segment in spine:
-            if ((number < segment["value"] and segment["left"] is None) or 
+            if ((number < segment["value"] and segment["left"] is None) or
                 (number > segment["value"] and segment["right"] is None)):
                 segment["left" if number < segment["value"] else "right"] = number
                 break
@@ -52,16 +52,25 @@ def sword_sort_key(sword: Tuple[int, int, List[int]]) -> Tuple[int, Tuple[int, .
 
 
 def part1(filepath: str):
+    """What is the quality of the sword currently being recorded by the armourer?"""
     _, numbers = next(read_line(filepath))
     print("Part 1:", get_quality(build_fishbone(numbers)))
 
 
 def part2(filepath: str):
+    """
+    What is the quality difference between the best and
+    the weakest sword on the given list?
+    """
     qualities = [get_quality(build_fishbone(numbers)) for _, numbers in read_line(filepath)]
     print("Part 2:", max(qualities) - min(qualities))
 
 
 def part3(filepath: str):
+    """
+    Sort the swords from the best to the weakest.
+    What is the checksum of the sorted list?
+    """
     swords = [
         (sword_id, get_quality(spine := build_fishbone(numbers)), get_levels(spine))
         for sword_id, numbers in read_line(filepath)

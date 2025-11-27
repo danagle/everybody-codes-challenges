@@ -45,14 +45,14 @@ class DSU:
 
 def load_data(filepath: str):
     """Load and encode DNA sequences from file"""
-    lines = Path(filepath).read_text().strip().splitlines()
+    lines = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     # Translate DNA characters to numbers for efficiency
     # A->0, T->1, C->2, G->3
     dna_translator = bytes.maketrans(b"ATCG", bytes(range(4)))
     # Parse lines like "1:ATCGATCG" into (id, encoded_sequence)
     sequences = [
         (
-            int(a), 
+            int(a),
             b.encode().translate(dna_translator)
         )
         for a, b in (line.split(":") for line in lines)
@@ -61,6 +61,7 @@ def load_data(filepath: str):
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q09_p1.txt") -> None:
+    """Find the child's scale and calculate its degree of similarity."""
     sequences = load_data(filepath)
     (_, a), (_, b), (_, child) = sequences
 
@@ -70,6 +71,7 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q09_p1.txt") -> None:
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q09_p2.txt") -> None:
+    """What is the sum of the degrees of similarity of all the children found on the list?"""
     sequences = load_data(filepath)
     total = 0
 
@@ -77,7 +79,7 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q09_p2.txt") -> None:
     for index, child in sequences:
         # Get all other sequences as potential parents
         parents = [seq for i, seq in sequences if i != index]
-        
+
         # Score all pairs of parents
         for a, b in combinations(parents, 2):
             # Check all positions at once: child must match at least one parent
@@ -89,12 +91,16 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q09_p2.txt") -> None:
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q09_p3.txt") -> None:
+    """
+    Find the largest family and calculate the sum of the scale numbers
+    of all members in this family.
+    """
     sequences = load_data(filepath)
     families = DSU(len(sequences))
     root = {}  # Trie root
 
     # Build the trie: insert each sequence and store its ID at the leaf
-    for id, sequence in sequences:
+    for _id, sequence in sequences:
         node = root
         # Navigate/create path through trie following the sequence
         for x in sequence:
@@ -102,7 +108,7 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q09_p3.txt") -> None:
                 node[x] = {}
             node = node[x]
         # At the leaf, store which sequence ID ends here
-        node.setdefault("ids", []).append(id - 1)
+        node.setdefault("ids", []).append(_id - 1)
 
     # Compare every pair of sequences to find related sequences
     for (id_a, seq_a), (id_b, seq_b) in combinations(sequences, 2):
@@ -115,7 +121,7 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q09_p3.txt") -> None:
                 # Check if any OTHER sequences end at this trie node
                 for leaf_id in node.get("ids", []):
                     # Don't union a sequence with itself
-                    if leaf_id != id_a - 1 and leaf_id != id_b - 1:
+                    if leaf_id not in (id_a - 1, id_b - 1):
                         # This sequence matches the pattern formed by A and B
                         # So unite all three into the same family
                         families.union(leaf_id, id_a - 1)

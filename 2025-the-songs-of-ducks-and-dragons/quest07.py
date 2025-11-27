@@ -10,6 +10,7 @@ from pathlib import Path
 
 
 class TrieNode:
+    """The Trie structure is composed on nodes."""
     __slots__ = ("children", "is_end")
     def __init__(self):
         self.children = {}
@@ -17,6 +18,7 @@ class TrieNode:
 
 
 class Trie:
+    """A simple Trie implementation."""
     def __init__(self):
         self.root = TrieNode()
 
@@ -44,12 +46,14 @@ class Trie:
 
 
 def load_file(filepath: str) -> tuple[list[str], list[str]]:
-    names, _, *rules = Path(filepath).read_text().strip().splitlines()
+    """Read a list of name prefixes and a list of rules from the input file."""
+    names, _, *rules = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     return names.split(","), rules
 
 
 def get_pairs_mapping(rules):
-    mapping, pairs = dict(), set()
+    """Builds a character-transition map and a transition set from the expansion rules."""
+    mapping, pairs = {}, set()
     for rule in rules:
         a, b = rule.split(" > ", 1)
         mapping[a] = b.split(",")
@@ -58,6 +62,10 @@ def get_pairs_mapping(rules):
 
 
 def get_filtered(prefixes, pairs):
+    """
+    Returns minimal list of valid prefixes with no prefix being
+    a leading substring of another.
+    """
     filtered = []
     for prefix in sorted(prefixes, key=len):
         if not any(prefix.startswith(existing) for existing in filtered):
@@ -67,6 +75,7 @@ def get_filtered(prefixes, pairs):
 
 
 def get_filtered_trie(prefixes, pairs):
+    """Uses Trie structure to find the minimal list of valid prefixes."""
     trie = Trie()
     filtered = []
     for prefix in sorted(prefixes, key=len):
@@ -78,6 +87,7 @@ def get_filtered_trie(prefixes, pairs):
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q07_p1.txt") -> None:
+    """Which name from the list can be created while following the rules?"""
     names, rules = load_file(filepath)
 
     pairs, _ = get_pairs_mapping(rules)
@@ -89,16 +99,21 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q07_p1.txt") -> None:
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q07_p2.txt") -> None:
+    """Find all the names that comply with the rules and calculate the sum of their indices."""
     names, rules = load_file(filepath)
 
     pairs, _ = get_pairs_mapping(rules)
 
-    total = sum(i for i, name in enumerate(names, 1) 
+    total = sum(i for i, name in enumerate(names, 1)
                 if all(pair in pairs for pair in pairwise(name)))
     print("Part 2:", total)
 
 
 def count_iterative(prefixes, mapping):
+    """
+    Counts the total number of possible extensions of a list of prefix strings 
+    by iteratively expanding their final character according to the mapping.
+    """
     shortest, longest, total = 7, 11, 0
     for prefix in prefixes:
         last_chars = Counter(prefix[-1])
@@ -111,13 +126,19 @@ def count_iterative(prefixes, mapping):
                     new_last_chars[next_char] += count
             last_chars = new_last_chars
             if length >= shortest:
-               total += sum(last_chars.values())
+                total += sum(last_chars.values())
     return total
 
 
 def count_recursive(prefixes, mapping):
+    """
+    Counts the total number of possible extensions of a list of prefix strings 
+    by recursively expanding their final character according to the mapping.
+    """
     @cache
     def count(last_char, length):
+        """Recursive count."""
+        # Termination case
         if length > 11:
             return 0
         total = int(length >= 7)
@@ -129,6 +150,7 @@ def count_recursive(prefixes, mapping):
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q07_p3.txt") -> None:
+    """How many unique names can be created based on the given prefixes and rules?"""
     prefixes, rules = load_file(filepath)
 
     pairs, mapping = get_pairs_mapping(rules)
@@ -143,7 +165,7 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q07_p3.txt") -> None:
     # total = count_iterative(filtered_prefixes, mapping)
     # 6324 function calls (6093 primitive calls) in 0.008 seconds
     total = count_recursive(filtered, mapping)
-    
+
     print("Part 3:", total)
 
 
