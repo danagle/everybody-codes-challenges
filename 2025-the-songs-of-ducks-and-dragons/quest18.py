@@ -17,8 +17,8 @@ def load_plants(filepath: str) -> Tuple[Dict[int, Dict], List[str]]:
     plants: Dict[int, Dict] = {}
     test_cases: List[str] = []
     current_plant = None
-    
-    lines = Path(filepath).read_text().strip().splitlines()
+
+    lines = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
 
     for raw in lines:
         line = raw.strip()
@@ -26,7 +26,11 @@ def load_plants(filepath: str) -> Tuple[Dict[int, Dict], List[str]]:
             continue
 
         # Plant line
-        m = re.fullmatch(r"-?\s*Plant\s+(\d+)\s+with\s+thickness\s+(-?\d+):", line, re.I)
+        m = re.fullmatch(
+            r"-?\s*Plant\s+(\d+)\s+with\s+thickness\s+(-?\d+):",
+            line,
+            re.I
+        )
         if m:
             pid = int(m.group(1))
             thickness = int(m.group(2))
@@ -38,13 +42,21 @@ def load_plants(filepath: str) -> Tuple[Dict[int, Dict], List[str]]:
             continue
 
         # Branch to Plant
-        m = re.fullmatch(r"-?\s*branch\s+to\s+Plant\s+(\d+)\s+with\s+thickness\s+(-?\d+)", line, re.I)
+        m = re.fullmatch(
+            r"-?\s*branch\s+to\s+Plant\s+(\d+)\s+with\s+thickness\s+(-?\d+)",
+            line,
+            re.I
+        )
         if m:
             plants[current_plant]["inputs"].append((int(m.group(1)), int(m.group(2))))
             continue
 
         # Free branch
-        m = re.fullmatch(r"-?\s*free\s+branch\s+with\s+thickness\s+(-?\d+)", line, re.I)
+        m = re.fullmatch(
+            r"-?\s*free\s+branch\s+with\s+thickness\s+(-?\d+)",
+            line,
+            re.I
+        )
         if m:
             plants[current_plant]["inputs"].append((None, int(m.group(1))))
             continue
@@ -175,6 +187,9 @@ def hill_climb(plants, roots, last_pid, current_free):
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q18_p1.txt"):
+    """
+    What is the brightness energy of the last plant?
+    """
     plants, _ = load_plants(filepath)
 
     last_pid = max(plants)
@@ -187,12 +202,16 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q18_p1.txt"):
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q18_p2.txt"):
+    """
+    What is the sum of the brightness energies of the last plant
+    for all the test cases?
+    """
     plants, test_cases = load_plants(filepath)
 
     last_pid = max(plants)
 
     free_plants = [
-        pid for pid, data in plants.items() 
+        pid for pid, data in plants.items()
         if any(src is None for src, _ in data["inputs"])
     ]
     free_plants.sort()
@@ -201,7 +220,7 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q18_p2.txt"):
     for case in test_cases:
         bits = list(case.replace(" ", ""))
         current_free = {
-            pid: int(bits[i]) if i < len(bits) else 0 
+            pid: int(bits[i]) if i < len(bits) else 0
             for i, pid in enumerate(free_plants)
         }
         cache = {}
@@ -212,13 +231,19 @@ def part2(filepath: str = "../input/everybody_codes_e2025_q18_p2.txt"):
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q18_p3.txt"):
+    """
+    Find the maximum energy achievable in the final plant of this setup. 
+    What is the total difference in energy obtained by the dragonducks in the final
+    plant compared to that maximum? 
+    Include only those dragonducks who managed to activate the final plant at all.
+    """
     plants, test_cases = load_plants(filepath)
 
     last_pid = max(plants)
 
     # all roots
     all_roots = [
-        pid for pid, data in plants.items() 
+        pid for pid, data in plants.items()
         if any(src is None for src, _ in data["inputs"])
     ]
     all_roots.sort()
@@ -229,7 +254,7 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q18_p3.txt"):
     for case in test_cases:
         bits = list(case.replace(" ", ""))
         cfg = {
-            pid: int(bits[i]) if i < len(bits) else 0 
+            pid: int(bits[i]) if i < len(bits) else 0
             for i, pid in enumerate(all_roots)
         }
         cache = {}
@@ -250,14 +275,13 @@ def part3(filepath: str = "../input/everybody_codes_e2025_q18_p3.txt"):
     for case in test_cases:
         bits = list(case.replace(" ", ""))
         cfg = {
-            pid: int(bits[i]) if i < len(bits) else 0 
+            pid: int(bits[i]) if i < len(bits) else 0
             for i, pid in enumerate(all_roots)
         }
         cache = {}
         e = get_energy(plants, cfg, last_pid, cache)
         if e > 0:
-            if e > global_max:
-                global_max = e
+            global_max = max(global_max, e)
             total_diff += (global_max - e)
 
     print("Part 3:", total_diff)

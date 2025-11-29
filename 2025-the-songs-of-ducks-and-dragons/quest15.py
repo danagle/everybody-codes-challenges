@@ -5,13 +5,14 @@ https://everybody.codes/event/2025/quests/15
 """
 from collections import deque
 import heapq
-import math
+from math import inf
 from pathlib import Path
 
 
 def load_file(filepath):
-    return [(s[0], int(s[1:])) 
-            for s in Path(filepath).read_text().strip().split(',')]
+    """Reads list of steps from the input file."""
+    return [(s[0], int(s[1:]))
+            for s in Path(filepath).read_text(encoding="utf-8").strip().split(',')]
 
 
 def a_star(grid, cost_fn, start, goal, heuristic):
@@ -25,7 +26,6 @@ def a_star(grid, cost_fn, start, goal, heuristic):
     heuristic: function (x, y) -> estimated cost to goal
     """
     directions = [(0,1), (1,0), (0,-1), (-1,0)]
-    INF = math.inf
 
     g_score = {start: 0}
     open_heap = []
@@ -34,7 +34,7 @@ def a_star(grid, cost_fn, start, goal, heuristic):
     closed = set()  # nodes whose shortest path is finalized
 
     while open_heap:
-        f, current = heapq.heappop(open_heap)
+        _, current = heapq.heappop(open_heap)
 
         # skip entries that are stale (we may have pushed duplicates)
         if current in closed:
@@ -65,7 +65,7 @@ def a_star(grid, cost_fn, start, goal, heuristic):
             neighbor = (nx, ny)
             tentative_g = g_score[current] + cost_fn(current, neighbor)
 
-            if tentative_g < g_score.get(neighbor, INF):
+            if tentative_g < g_score.get(neighbor, inf):
                 g_score[neighbor] = tentative_g
                 heapq.heappush(open_heap, (tentative_g + heuristic(nx, ny), neighbor))
 
@@ -84,19 +84,19 @@ def bfs(grid, cost_fn, start, goal):
     directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
     queue = deque()
     queue.append((start, 0))
-    
+
     while queue:
         (x, y), dist = queue.popleft()
         if (x, y) == goal:
             return dist
-        
+
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             if 0 <= nx < len(grid[0]) and 0 <= ny < len(grid) and grid[ny][nx] == ord(' '):
                 grid[ny][nx] = ord('.')  # mark visited
                 cost = cost_fn((x, y), (nx, ny))
                 queue.append(((nx, ny), dist + cost))
-    
+
     return -1
 
 
@@ -110,7 +110,6 @@ def dijkstra(grid, cost_fn, start, goal):
     goal: (x, y)
     """
     directions = [(0,1), (1,0), (0,-1), (-1,0)]
-    INF = math.inf
 
     # distances from start
     dist = {start: 0}
@@ -147,7 +146,7 @@ def dijkstra(grid, cost_fn, start, goal):
             new_dist = current_dist + cost
 
             # Relaxation step
-            if new_dist < dist.get(neighbor, INF):
+            if new_dist < dist.get(neighbor, inf):
                 dist[neighbor] = new_dist
                 heapq.heappush(heap, (new_dist, neighbor))
 
@@ -242,8 +241,8 @@ def shortest_distance_with_compression(directions, algorithm="bfs"):
         nx, ny = xmap[target[0]], ymap[target[1]]
 
         # Determine step direction for each axis
-        dx = (nx - cx)
-        dy = (ny - cy)
+        dx = nx - cx
+        dy = ny - cy
         dx = 0 if dx == 0 else dx // abs(dx)
         dy = 0 if dy == 0 else dy // abs(dy)
 
@@ -288,18 +287,21 @@ def shortest_distance_with_compression(directions, algorithm="bfs"):
 
 
 def part1(filepath="../input/everybody_codes_e2025_q15_p1.txt"):
+    """What is the length of the shortest path to the exit point?"""
     notes = load_file(filepath)
     result = shortest_distance_with_compression(notes)
     print("Part 1:", result)
 
 
 def part2(filepath="../input/everybody_codes_e2025_q15_p2.txt"):
+    """What is the length of the shortest path to the exit point?"""
     notes = load_file(filepath)
     result = shortest_distance_with_compression(notes)
     print("Part 2:", result)
 
 
 def part3(filepath="../input/everybody_codes_e2025_q15_p3.txt"):
+    """What is the length of the shortest path to the exit point?"""
     notes = load_file(filepath)
     result = shortest_distance_with_compression(notes)
     print("Part 3:", result)
@@ -309,4 +311,3 @@ if __name__ == "__main__":
     part1()
     part2()
     part3()
- 

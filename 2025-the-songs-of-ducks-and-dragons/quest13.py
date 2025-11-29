@@ -7,15 +7,17 @@ from pathlib import Path
 
 
 def load_numbers(filepath: str):
+    """Read the list of numbers from the input file."""
     return [
-        int(n) 
-        for n in Path(filepath).read_text().strip().splitlines()
+        int(n)
+        for n in Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     ]
 
 
 def load_tuples(filepath: str):
+    """Read the list of integer tuples from the input file."""
     notes = []
-    for line in Path(filepath).read_text().strip().splitlines():
+    for line in Path(filepath).read_text(encoding="utf-8").strip().splitlines():
         n, *rest = line.split('-')
         first = int(n)
         last = int(rest[0]) if rest else first
@@ -24,9 +26,10 @@ def load_tuples(filepath: str):
 
 
 def part1_original(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
+    """What number should the pointer of the first dial be set to?"""
     notes = load_numbers(filepath)
     turns = 2025
-    
+
     left_side = []
     right_side = [1]
 
@@ -38,19 +41,21 @@ def part1_original(filepath="../input/everybody_codes_e2025_q13_p1.txt"):
 
     dial_numbers = right_side + left_side[::-1]
     position = turns % len(dial_numbers)
-    
+
     print(f"Part 1: {dial_numbers[position]}")
 
 
-def dial_with_allocation(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
+def dial_with_allocation(filepath="../input/everybody_codes_e2025_q13_p2.txt",
+                         turns=20252025):
+    """Solves the dial using full memory allocation."""
     notes = load_tuples(filepath)
-    
+
     left_side = []
     right_side = [1]
 
     for index, pair in enumerate(notes):
         a, b = pair
-        numbers = [n for n in range(a, b+1)]
+        numbers = list(range(a, b+1))
         if index % 2 == 0:
             right_side.extend(numbers)
         else:
@@ -58,11 +63,12 @@ def dial_with_allocation(filepath="../input/everybody_codes_e2025_q13_p2.txt", t
 
     dial_numbers = right_side + left_side[::-1]
     position = turns % len(dial_numbers)
-    
+
     return dial_numbers[position]
 
 
 def dial_with_segments(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
+    """Solves the dial rotation using tuples to represent the list segments."""
     notes = load_tuples(filepath)
     value = None
 
@@ -89,7 +95,7 @@ def dial_with_segments(filepath="../input/everybody_codes_e2025_q13_p2.txt", tur
 
     # Walk through segments until we land inside one
     for a, b, direction in dial:
-        segment_length = (abs(b - a) + 1)
+        segment_length = abs(b - a) + 1
 
         if offset < segment_length:
             if direction == 1:
@@ -100,18 +106,19 @@ def dial_with_segments(filepath="../input/everybody_codes_e2025_q13_p2.txt", tur
             break
 
         offset -= segment_length
-        
+
     return value
 
 
 def dial_with_ranges(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns=20252025):
+    """Solves the dial rotation using ranges."""
     notes = load_tuples(filepath)
     value = None
 
     numbers = [range(1, 1+1)] \
         + [range(a, b+1, +1) for (a, b) in notes[0::2]] \
         + [range(b, a-1, -1) for (a, b) in notes[1::2][::-1]]
-    
+
     position = turns % sum(len(rng) for rng in numbers)
 
     for rng in numbers:
@@ -125,6 +132,7 @@ def dial_with_ranges(filepath="../input/everybody_codes_e2025_q13_p2.txt", turns
 
 
 def part1():
+    """What number should the pointer of the first dial be set to?"""
     turns = 2025
     filepath = "../input/everybody_codes_e2025_q13_p1.txt"
     result = dial_with_segments(filepath, turns)
@@ -132,6 +140,7 @@ def part1():
 
 
 def part2():
+    """What number should the pointer of the second dial be set to?"""
     turns = 20252025
     filepath = "../input/everybody_codes_e2025_q13_p2.txt"
     result = dial_with_segments(filepath, turns)
@@ -139,6 +148,7 @@ def part2():
 
 
 def part3():
+    """What number should the pointer of the third dial be set to?"""
     turns = 202520252025
     filepath = "../input/everybody_codes_e2025_q13_p3.txt"
     result = dial_with_segments(filepath, turns)

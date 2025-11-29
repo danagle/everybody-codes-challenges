@@ -8,16 +8,19 @@ from pathlib import Path
 
 DIAGONALS = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
 
-def load_grid(filepath: str) -> str:
-    text =  Path(filepath).read_text().strip().splitlines()
+def load_grid(filepath: str):
+    """Read the 2-D grid from the input text file."""
+    text =  Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     return [[c == "#" for c in line] for line in text]
 
 
 def count_active(grid):
+    """Count the active cells in the grid/"""
     return sum(cell for row in grid for cell in row)
 
 
 def life_round(grid):
+    """Simulate a round of the game of light."""
     rows, cols = len(grid), len(grid[0])
     new_grid = [[False] * cols for _ in range(rows)]
 
@@ -29,14 +32,15 @@ def life_round(grid):
         )
 
         if grid[r][c]:
-            new_grid[r][c] = (live_neighbors % 2 == 1)
+            new_grid[r][c] = live_neighbors % 2 == 1
         else:
-            new_grid[r][c] = (live_neighbors % 2 == 0)
+            new_grid[r][c] = live_neighbors % 2 == 0
 
     return new_grid
 
 
 def part1(filepath="../input/everybody_codes_e2025_q14_p1.txt"):
+    """What is the total number of active tiles across all 10 rounds?"""
     grid = load_grid(filepath)
     total = 0
 
@@ -48,9 +52,10 @@ def part1(filepath="../input/everybody_codes_e2025_q14_p1.txt"):
 
 
 def part2(filepath="../input/everybody_codes_e2025_q14_p2.txt"):
+    """What is the total number of active tiles across all 2025 rounds?"""
     grid = load_grid(filepath)
     total = 0
-    
+
     for _ in range(2025):
         grid = life_round(grid)
         total += count_active(grid)
@@ -68,6 +73,7 @@ def center_matches(grid, small_grid, top=13, left=13):
 
 
 def part3(filepath="../input/everybody_codes_e2025_q14_p3.txt"):
+    """What is the total number of active tiles across all 1,000,000,000 rounds?"""
     small = load_grid(filepath)
     grid = [[False] * 34 for _ in range(34)]
 
@@ -75,11 +81,10 @@ def part3(filepath="../input/everybody_codes_e2025_q14_p3.txt"):
     last_match = 0
     matches = []
 
-    TARGET_ROUNDS = 1_000_000_000
-    cycle_finished = False
+    target_rounds = 1_000_000_000
     cycle_extra_sum = 0
 
-    for round_ in range(TARGET_ROUNDS):
+    for round_ in range(target_rounds):
         # 1. Run a life step
         grid = life_round(grid)
         live_count = count_active(grid)
@@ -105,7 +110,7 @@ def part3(filepath="../input/everybody_codes_e2025_q14_p3.txt"):
                 cycle_sum = sum(v for _, v in cycle)
 
                 # 5. Determine how many full cycles remain
-                remaining_rounds = TARGET_ROUNDS - round_ - 1
+                remaining_rounds = target_rounds - round_ - 1
                 full_cycles = remaining_rounds // cycle_len
                 cycle_extra_sum += full_cycles * cycle_sum
 
@@ -117,7 +122,6 @@ def part3(filepath="../input/everybody_codes_e2025_q14_p3.txt"):
                     cycle_extra_sum += val
                     leftover -= d
 
-                cycle_finished = True
                 break
 
     print("Part 3:", (total_matched + cycle_extra_sum))

@@ -8,23 +8,31 @@ from math import prod
 
 
 def load_numbers(filepath: str):
+    """Reads list of numbers from the input file."""
     return [
-        int(n) 
-        for n in Path(filepath).read_text().strip().split(',')
+        int(n)
+        for n in Path(filepath).read_text(encoding="utf-8").strip().split(',')
     ]
 
 
 def part1(filepath="../input/everybody_codes_e2025_q16_p1.txt"):
+    """
+    How many blocks are needed to build a wall with a length of
+    90 columns according to the spell?
+    """
     numbers = load_numbers(filepath)
 
     length = 90  # Number of wall positions
-        
+
     total = sum(length // n for n in numbers)
 
     print("Part 1:", total)
 
 
 def get_spell_numbers(numbers):
+    """
+    Extracts the spell numbers used to construct the wall.
+    """
     # Number of wall positions
     length = len(numbers)
 
@@ -56,14 +64,22 @@ def get_spell_numbers(numbers):
 
 
 def part2(filepath="../input/everybody_codes_e2025_q16_p2.txt"):
+    """
+    Find the spell that generated the wall fragment and calculate
+    the product of all numbers from the spell.
+    """
     numbers = load_numbers(filepath)
-    
+
     spells = get_spell_numbers(numbers)
 
     print("Part 2:", prod(spells))
-    
+
 
 def part3(filepath="../input/everybody_codes_e2025_q16_p3.txt"):
+    """
+    How long is the wall (in columns) if the spell had 202,520,252,025,000 
+    blocks to use?
+    """
     numbers = load_numbers(filepath)
 
     # The limit we must not exceed when summing contributions of spells
