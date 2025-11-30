@@ -3,27 +3,108 @@ The Song of Ducks and Dragons [2025]
 Quest 20: Dream in Triangles
 https://everybody.codes/event/2025/quests/20
 """
+from collections import defaultdict, deque
+from itertools import zip_longest
+from math import inf
 from pathlib import Path
 
 
-def read_lines(filepath):
-    """Read lines of text from input file."""
-    return Path(filepath).read_text(encoding="utf-8").strip().splitlines()
+def load_triangular_grid(filepath: str):
+    """Read the 2-D triangular grid from the input text file."""
+    grid_dict = {}
+    lines = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
+
+    for r, row in enumerate(lines):
+        for c, cell in enumerate(row.strip('.')):
+            grid_dict[r, c] = cell
+
+    return grid_dict
 
 
-def within(x, y, grid):
-    """Check (x,y) is within the grid boundary."""
-    return 0 <= x < len(grid) and 0 <= y < len(grid[x])
+def neighbours(position, include_self=False):
+    """Returns the neighbours for a triangular shaped cell (row, col)."""
+    if include_self:
+        yield position
+    row, col = position
+    yield row, col - 1  # left
+    yield row, col + 1  # right
+    if col % 2:
+        yield row + 1, col - 1  # diagonal below left
+    else:
+        yield row - 1, col + 1  # diagonal above right
 
 
-def at(x, y, grid):
-    """Get value at (x,y) on grid."""
-    return grid[x][y]
+def map_rotation(dict_grid):
+    """Performs transformation pipeline on the grid to create rotation map."""
+    # Group coordinates by row (r)
+    rows = defaultdict(list)
+    for r, c in dict_grid:
+        rows[r].append((r, c))
+    grid = list(rows.values())
+
+    # Split each row into even and odd slices
+    grid = [row[e::2] for row in grid for e in (0, 1)]
+
+    # Reverse vertically
+    grid.reverse()
+
+    # Transpose and drop padding
+    grid = [list(filter(None, col)) for col in zip_longest(*grid)]
+
+    # Build mapping from new (r, c) to old coordinate
+    return {(r, c): coord for r, row in enumerate(grid) for c, coord in enumerate(row)}
 
 
-def locate_tile_on_grid(grid, tile):
-    """Find the first instance of tile on the grid."""
-    return next((r, row.index(tile)) for r, row in enumerate(grid) if tile in row)
+def bfs(grid, with_rotation=False):
+    """BFS to find distance to 'end' tile using trampoline mechanics."""
+    # Locate start and end
+    start = next(p for p, v in grid.items() if v == 'S')
+    end   = next(p for p, v in grid.items() if v == 'E')
+
+    # Mark both as traversable
+    grid[start] = grid[end] = 'T'
+
+    # Rotation map used for part 3
+    mapping = map_rotation(grid)
+
+    def mapped_neighbors(pos):
+        """Yields neighbours mapped under rotation."""
+        for n in neighbours(pos, True):
+            m = mapping.get(n)
+            if m is not None:
+                yield m
+
+    def local_neighbors(pos):
+        """Yields immediate neighbours."""
+        for n in neighbours(pos):
+            if grid.get(n) == 'T':
+                yield n
+
+    if with_rotation:
+        neighbors_fn = mapped_neighbors
+    else:
+        neighbors_fn = local_neighbors
+
+    # Initialize distances for all 'T' cells
+    distance = {p: inf for p, v in grid.items() if v == 'T'}
+    distance[start] = 0
+
+    queue = deque([start])
+    in_queue = set(queue)
+
+    while queue:
+        pos = queue.popleft()
+        in_queue.remove(pos)
+        dist = distance[pos] + 1
+
+        for next_pos in neighbors_fn(pos):
+            if next_pos in distance and dist < distance[next_pos]:
+                distance[next_pos] = dist
+                if next_pos not in in_queue:
+                    queue.append(next_pos)
+                    in_queue.add(next_pos)
+
+    return distance[end]
 
 
 def part1(filepath: str = "../input/everybody_codes_e2025_q20_p1.txt") -> None:
@@ -31,121 +112,30 @@ def part1(filepath: str = "../input/everybody_codes_e2025_q20_p1.txt") -> None:
     Count pairs of 'T' that share an edge when each cell is an equilateral triangle
     arranged in a checkerboard of up/down orientations.
     """
-    lines = read_lines(filepath)
+    grid = load_triangular_grid(filepath)
+
     count = 0
+    for pos, cell in grid.items():
+        if cell == 'T':
+            for neighbour in neighbours(pos):
+                count += grid.get(neighbour) == 'T'
 
-    # horizontal pairs
-    for row in lines:
-        count += sum(row[i] == row[i-1] == 'T' for i in range(1, len(row)))
-
-    # staggered vertical-ish pairs
-    for r in range(1, len(lines) - 1, 2):
-        for c, ch in enumerate(lines[r]):
-            if ch == 'T':
-                dr = 1 if (r + c) % 2 else -1
-                if lines[r + dr][c] == 'T':
-                    count += 1
-
-    print("Part 1:", count)
+    print("Part 1:", count // 2)
 
 
 def part2(filepath: str = "../input/everybody_codes_e2025_q20_p2.txt") -> None:
-    """
-    Minimum number of jumps to reach the golden trampoline.
-    BFS shortest path on a static map.
-    """
-    grid = read_lines(filepath)
+    """Minimum number of jumps to reach the golden trampoline using BFS."""
+    grid = load_triangular_grid(filepath)
 
-    start = locate_tile_on_grid(grid, 'S')
-    end =  locate_tile_on_grid(grid, 'E')
-
-    current_positions = {start}
-    visited = {start}
-    jumps = 0
-
-    while True:
-        jumps += 1
-        next_positions = set()
-
-        for x, y in current_positions:
-            for dx, dy in ((0, -1), (0, 1), ((-1 if (x + y) % 2 == 0 else 1), 0)):
-                nx, ny = x + dx, y + dy
-
-                if (nx, ny) == end:
-                    print("Part 2:", jumps)
-                    return
-
-                if within(nx, ny, grid) and at(nx, ny, grid) == 'T' and (nx, ny) not in visited:
-                    visited.add((nx, ny))
-                    next_positions.add((nx, ny))
-
-        current_positions = next_positions
-
-
-def rotate(grid, start):
-    """Rotate the triangle."""
-    height = len(grid)
-    width = len(grid[0])
-    new_grid = [list(row) for row in grid]
-
-    sx, sy = start
-
-    for r in range(height):
-        x = sx - r
-        y = sy + r
-        up = True
-
-        for c in range(width):
-            if new_grid[r][c] != '.':
-                new_grid[r][c] = at(x, y, grid)
-                if up:
-                    x -= 1
-                else:
-                    y -= 1
-                up = not up
-
-    return ["".join(row) for row in new_grid]
+    print("Part 2:", bfs(grid, with_rotation=False))
 
 
 def part3(filepath: str = "../input/everybody_codes_e2025_q20_p3.txt") -> None:
     """What is the minimum number of jumps required to reach the sphere of mysterious energy?"""
-    base_grid = read_lines(filepath)
+    grid = load_triangular_grid(filepath)
 
-    start = locate_tile_on_grid(base_grid, 'S')
-
-    # Precompute the three possible triangle layouts
-    grids = [base_grid]
-    grids.append(rotate(grids[-1], start))
-    grids.append(rotate(grids[-1], start))
-
-    current_positions = {start}
-    visited = [set([start]), set(), set()]
-    jumps = 0
-
-    while True:
-        jumps += 1
-        idx = jumps % 3
-        current_grid = grids[idx]
-        next_positions = set()
-
-        for (x, y) in current_positions:
-            for dx, dy in ((0, 0), (0, -1), (0, 1), (-1 if (x + y) % 2 == 0 else 1, 0)):
-                nx, ny = x + dx, y + dy
-
-                if not within(nx, ny, base_grid):
-                    continue
-
-                cell = at(nx, ny, current_grid)
-
-                if cell == 'E':
-                    print("Part 3:", jumps)
-                    return
-
-                if cell in 'TS' and (nx, ny) not in visited[idx]:
-                    visited[idx].add((nx, ny))
-                    next_positions.add((nx, ny))
-
-        current_positions = next_positions
+    # Use rotating map
+    print("Part 3:", bfs(grid, with_rotation=True))
 
 
 if __name__ == "__main__":
