@@ -10,16 +10,36 @@ from pathlib import Path
 class DSU:
     """Disjoint Set (Union-Find)"""
     def __init__(self, items):
+        """
+        Initialize the DSU.
+
+        :param items: Iterable of items to be tracked.
+        Each item starts as its own parent with size 1.
+        """
         self.parent = {x: x for x in items}
         self.size   = {x: 1 for x in items}
 
     def find(self, x):
+        """
+        Find the representative (root) of the set containing `x`.
+        Uses path compression for efficiency.
+
+        :param x: Item to find the root of.
+        :return: The root of the set containing `x`.
+        """
         while self.parent[x] != x:
             self.parent[x] = self.parent[self.parent[x]]
             x = self.parent[x]
         return x
 
     def union(self, a, b):
+        """
+        Merge the sets containing `a` and `b`.
+        Uses union by size to keep the tree shallow.
+
+        :param a: First item.
+        :param b: Second item.
+        """
         ra, rb = self.find(a), self.find(b)
         if ra == rb:
             return
@@ -30,11 +50,14 @@ class DSU:
 
 
 def build_regions(grid):
-    """Build DSU regions for equal-value connected components."""
+    """
+    Build DSU regions for equal-value connected components.
+    The function only considers horizontal and vertical neighbors for connectivity.
+    """
     dsu = DSU(grid)
 
     for r, c in grid:
-        for dr, dc in [(1,0), (0,1)]:         # right and down only
+        for dr, dc in [(1,0), (0,1)]:  # right and down only
             nr, nc = r + dr, c + dc
             if (nr, nc) in grid:
                 if grid[r, c] == grid[nr, nc]:
@@ -76,15 +99,15 @@ def decending_path(grid, regions, dsu):
 def load_file(filepath: str):
     """Parse input file into a 2D-list representation of the grid."""
     return [
-        [int(n) for n in line] 
-        for line in Path(filepath).read_text().strip().splitlines() 
+        [int(n) for n in line]
+        for line in Path(filepath).read_text(encoding="utf-8").strip().splitlines()
         if line.strip()
     ]
 
 
 def load_grid(filepath: str):
     """Parse input file into a dict representation of the grid, {(r, c): barrel}."""
-    lines = Path(filepath).read_text().strip().splitlines()
+    lines = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     h, w = len(lines), len(lines[0])
     grid = {(r, c): int(lines[r][c])
             for r in range(h)
@@ -99,7 +122,7 @@ def flood_fill(grid, start, previous):
     cardinal_directions = [(-1,0), (1,0), (0,-1), (0,1)]
     queue = deque([start])
     reached = set()
-    
+
     append = queue.append
 
     while queue:
@@ -122,12 +145,14 @@ def flood_fill(grid, start, previous):
 
 
 def part1(filepath="../input/everybody_codes_e2025_q12_p1.txt"):
+    """How many barrels can the entire chain reaction destroy?"""
     grid = load_file(filepath)
     visited = flood_fill(grid, (0, 0), set())
     print(f"Part 1: {len(visited)}")
 
 
 def part2(filepath="../input/everybody_codes_e2025_q12_p2.txt"):
+    """How many barrels can the entire chain reaction destroy?"""
     grid = load_file(filepath)
     visit_one = flood_fill(grid, (0, 0), set())
     bottom_right = len(grid) - 1, len(grid[0]) - 1
@@ -136,6 +161,21 @@ def part2(filepath="../input/everybody_codes_e2025_q12_p2.txt"):
 
 
 def part3_bruteforce(filepath = "../input/everybody_codes_e2025_q12_p3.txt"):
+    """
+    How many barrels at most can be ultimately destroyed by setting the three
+    barrels chosen with the greedy approach on fire simultaneously?
+
+    The function iteratively:
+    1. Scans all cells in the grid to find the region of barrels reachable 
+       from each cell using flood-fill.
+    2. Selects the region with the largest number of barrels that haven't 
+       been destroyed yet.
+    3. Marks all barrels in that region as destroyed.
+    4. Repeats the process three times to simulate igniting three barrels.
+
+    This method exhaustively evaluates all possible starting positions, 
+    unlike the greedy DSU-based approach.
+    """
     grid = load_file(filepath)
     rows = len(grid)
     cols = len(grid[0])
@@ -159,6 +199,18 @@ def part3_bruteforce(filepath = "../input/everybody_codes_e2025_q12_p3.txt"):
 
 
 def part3(filepath = "../input/everybody_codes_e2025_q12_p3.txt"):
+    """
+    How many barrels at most can be ultimately destroyed by setting the three
+    barrels chosen with the greedy approach on fire simultaneously?
+    
+    The function iteratively:
+    1. Builds connected regions of barrels using a Disjoint Set Union (DSU) structure.
+    2. Computes the descending path for each region to estimate its total reach.
+    3. Selects the region with the highest total reach and removes it from the grid.
+    4. Repeats the process three times to simulate igniting three barrels.
+
+    Uses DSU to efficiently track and merge regions for speed.
+    """
     grid = load_grid(filepath)
     total = 0
 

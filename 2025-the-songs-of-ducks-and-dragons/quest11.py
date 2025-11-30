@@ -6,10 +6,12 @@ https://everybody.codes/event/2025/quests/11
 from math import ceil
 from pathlib import Path
 
+
 def load_file(filepath: str):
+    """Read list of numbers from input text file."""
     return [
-        int(line) 
-        for line in Path(filepath).read_text().strip().splitlines() 
+        int(line)
+        for line in Path(filepath).read_text(encoding="utf-8").strip().splitlines()
         if line.strip()
     ]
 
@@ -27,7 +29,7 @@ def phase_one(columns, max_rounds=10):
                 columns[i] -= 1
                 columns[i + 1] += 1
                 moved = True
-        if moved:       
+        if moved:
             completed += 1
     return completed, columns
 
@@ -44,7 +46,7 @@ def phase_two(rounds_completed, columns, max_rounds=-1):
                 columns[i] += 1
                 columns[i + 1] -= 1
                 moved = True
-        if moved:       
+        if moved:
             rounds_completed += 1
     return rounds_completed, columns
 
@@ -53,8 +55,8 @@ def part1(filepath="../input/everybody_codes_e2025_q11_p1.txt"):
     """Calculate flock checksum after 10 rounds."""
     columns = load_file(filepath)
     rounds_completed, columns = phase_one(columns)
-    _, final_columns = phase_two(rounds_completed, columns)
-    
+    _, final_columns = phase_two(rounds_completed, columns, max_rounds=10)
+
     result = sum(i * n for i, n in enumerate(final_columns, 1))
 
     print("Part 1:", result)
@@ -83,6 +85,7 @@ def part2(filepath="../input/everybody_codes_e2025_q11_p2.txt"):
 
     # Iteratively smooth until non-decreasing
     def has_drop(xs):
+        """Checks for decreasing sequence."""
         return any(xs[i] > xs[i+1] for i in range(len(xs) - 1))
 
     while has_drop(ascending):
@@ -110,7 +113,7 @@ def part2(filepath="../input/everybody_codes_e2025_q11_p2.txt"):
     phase2 = sum(max(0, average - column) for column in ascending)
 
     total_rounds = phase1 + phase2
-    
+
     print("Part 2:", total_rounds)
 
 
@@ -121,7 +124,7 @@ def part3(filepath="../input/everybody_codes_e2025_q11_p3.txt"):
     """
     columns = load_file(filepath)
     mean = sum(columns) // len(columns)
-    
+
     total = sum(mean - ducks for ducks in columns if ducks < mean)
 
     print("Part 3:", total)
@@ -129,5 +132,6 @@ def part3(filepath="../input/everybody_codes_e2025_q11_p3.txt"):
 
 if __name__ == "__main__":
     part1()
-    part2()
+    part2_bruteforce()
+    #part2()
     part3()
