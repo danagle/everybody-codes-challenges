@@ -2,7 +2,7 @@ from collections import defaultdict
 from pathlib import Path
 
 
-def read_notes(filename: str) -> list[tuple(str, list[str])]:
+def read_notes(filename: str) -> list[tuple[str, list[str]]]:
     lines = Path(filename).read_text(encoding="utf-8").splitlines()
     records = []
     for line in lines:
