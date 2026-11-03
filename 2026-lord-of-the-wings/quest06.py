@@ -11,7 +11,7 @@ def read_notes(filename: str) -> list[tuple[str, list[str]]]:
     return records
 
 
-def bfs(graph, null):
+def bfs(graph: defaultdict[str, set[str]], null: str) -> set[str]:
     q = [null]
     seen = set()
     for item in q:
