@@ -181,4 +181,4 @@ def part3(filepath: str = "../input/everybody_codes_e2026_q10_p3.txt") -> None:
 if __name__ == "__main__":
     part1()
     part2()
-    #part3()
+    part3()
