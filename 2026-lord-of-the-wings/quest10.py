@@ -3,167 +3,125 @@ from pathlib import Path
 DIRS = {"^": 0, ">": 1, "v": 2, "<": 3}
 DR = (-1, 0, 1, 0)
 DC = (0, 1, 0, -1)
+NEVER = 1 << 63  # Part 1 ghosts never disappear
 
 
-def read_notes(filepath: str):
+def read_notes(filepath: str) -> tuple[list[str], int, int]:
     grid = Path(filepath).read_text(encoding="utf-8").strip().splitlines()
     H, W = len(grid), len(grid[0])
-    wall = [[ch == "#" for ch in row] for row in grid]
-    ghosts = []
-    for r, row in enumerate(grid):
-        for c, ch in enumerate(row):
-            if ch in DIRS:
-                ghosts.append((r * W + c, DIRS[ch]))
-    return W, H, wall, ghosts
+    return grid, H, W
 
 
-def make_table(W, H, wall):
-    # table[cell][dir] = cell landed on, or -1 if that direction is a wall
-    table = [[-1] * 4 for _ in range(W * H)]
+def find_ghosts(
+    grid: list[str], H: int, W: int
+) -> tuple[list[int], list[int], list[int], list[int]]:
+    """Parallel lists; index i is the same ghost for its whole life."""
+    row, col, direction, collisions = [], [], [], []
     for r in range(H):
         for c in range(W):
-            if wall[r][c]:
-                continue
-            for d in range(4):
-                rr, cc = r + DR[d], c + DC[d]
-                if not wall[rr][cc]:
-                    table[r * W + c][d] = rr * W + cc
-    return table
+            if grid[r][c] in DIRS:
+                row.append(r)
+                col.append(c)
+                direction.append(DIRS[grid[r][c]])
+                collisions.append(0)
+    return row, col, direction, collisions
 
 
-def step(table, pos, dir):
-    """One round, nobody dies. Mutates pos/dr, returns collisions per ghost."""
-    n = len(pos)
-    collisions = [0] * n
+def play_round(
+    grid: list[str],
+    row: list[int],
+    col: list[int],
+    direction: list[int],
+    collisions: list[int],
+    limit: int,
+) -> tuple[list[bool], int]:
+    """Advance every ghost by one round (in place).
+
+    Returns (is_alive, hits_this_round):
+    is_alive[i] is False for ghosts that reached the limit,
+    hits_this_round is the total number of collisions that happened in this round.
+    """
+    n = len(row)
+    is_alive = [True] * n
+    hits_this_round = 0
+
+    # Every ghost moves
     for i in range(n):
-        t = table[pos[i]][dir[i]]
-        if t < 0:
-            dir[i] = (dir[i] + 1) & 3  # wall: stay, turn clockwise
-            collisions[i] = 1
+        r = row[i] + DR[direction[i]]
+        c = col[i] + DC[direction[i]]
+        if grid[r][c] == "#":
+            # Encountered a wall: stay, turn clockwise, one collision
+            direction[i] = (direction[i] + 1) % 4
+            collisions[i] += 1
+            hits_this_round += 1
+            if collisions[i] >= limit:
+                is_alive[i] = False  # Disappears before the ghost-ghost check
         else:
-            pos[i] = t
-    seen = {}
+            row[i], col[i] = r, c
+
+    # ghost-ghost collisions among the survivors: everyone on a shared cell turns around once
+    by_spot: dict[tuple[int, int], list[int]] = {}
     for i in range(n):
-        seen.setdefault(pos[i], []).append(i)
-    for lst in seen.values():
-        if len(lst) > 1:  # shared cell: everyone turns around once
-            for i in lst:
-                dir[i] ^= 2
+        if is_alive[i]:
+            by_spot.setdefault((row[i], col[i]), []).append(i)
+    for group in by_spot.values():
+        if len(group) > 1:
+            for i in group:
+                direction[i] = (direction[i] + 2) % 4
                 collisions[i] += 1
-    return collisions
+                hits_this_round += 1
+                if collisions[i] >= limit:
+                    is_alive[i] = False
+    return is_alive, hits_this_round
 
 
-def step_real(table, pos, dir, cnt, limit):
-    """One round with the death rules."""
-    n = len(pos)
-    alive = [True] * n
-    for i in range(n):
-        t = table[pos[i]][dir[i]]
-        if t < 0:
-            dir[i] = (dir[i] + 1) & 3
-            cnt[i] += 1
-            if cnt[i] >= limit:
-                alive[i] = False
-        else:
-            pos[i] = t
-    seen = {}
-    for i in range(n):
-        if alive[i]:
-            seen.setdefault(pos[i], []).append(i)
-    for lst in seen.values():
-        if len(lst) > 1:
-            for i in lst:
-                dir[i] ^= 2
-                cnt[i] += 1
-                if cnt[i] >= limit:
-                    alive[i] = False
-    return alive
+def total_collisions(filepath: str, rounds: int) -> int:
+    """Part 1: Returns total collisions over a fixed number of rounds."""
+    grid, H, W = read_notes(filepath)
+    row, col, direction, collisions = find_ghosts(grid, H, W)
+    total = 0
+    for _ in range(rounds):
+        _, hits = play_round(grid, row, col, direction, collisions, NEVER)
+        total += hits
+    return total
 
 
-def total_collisions(filepath, rounds=10):
-    W, H, wall, gh = read_notes(filepath)
-    table = make_table(W, H, wall)
-    positions = [g[0] for g in gh]
-    directions = [g[1] for g in gh]
-    return sum(sum(step(table, positions, directions)) for _ in range(rounds))
-
-
-def last_round(filepath, limit):
-    W, H, wall, gh = read_notes(filepath)
-    table = make_table(W, H, wall)
-    pos = [g[0] for g in gh]
-    direct = [g[1] for g in gh]
-    cnt = [0] * len(pos)
-    now = 0
-    while pos:
-        n = len(pos)
-        # Find tail length mu and period lam of the labelled state
-        # recording cumulative collisions
-        seen = {}
-        p2, d2 = pos[:], direct[:]
-        cumulative = [
-            [0] for _ in range(n)
-        ]  # cumulative[i][k] = collisions of ghost i in the first k rounds
-        k = 0
-        while True:
-            key = tuple(p2) + tuple(d2)
-            if key in seen:
-                mu = seen[key]
-                lam = k - mu
-                break
-            seen[key] = k
-            coll = step(table, p2, d2)
+def last_round(filepath: str, limit: int) -> int:
+    """Parts 2 and 3: Returns round in which the last ghost disappears."""
+    grid, H, W = read_notes(filepath)
+    row, col, direction, collisions = find_ghosts(grid, H, W)
+    t = 0
+    seen: dict[tuple[tuple[int, int, int], ...], tuple[int, list[int]]] = (
+        {}
+    )  # State signature -> (round, collisions); reset whenever a ghost disappears
+    while row:
+        n = len(row)
+        signature = tuple(zip(row, col, direction))
+        if signature in seen:
+            old_t, old_collisions = seen[signature]
+            dt = t - old_t  # Period of the cycle
+            dh = [collisions[i] - old_collisions[i] for i in range(n)]
+            # Whole periods can be skipped while no ghost reaches the limit
+            skipped_periods = min(
+                (limit - collisions[i] - 1) // dh[i] for i in range(n) if dh[i] > 0
+            )
+            t += dt * skipped_periods
             for i in range(n):
-                cumulative[i].append(cumulative[i][-1] + coll[i])
-            k += 1
-        seen = None
-        L = mu + lam
+                collisions[i] += dh[i] * skipped_periods
+        seen[signature] = (t, collisions[:])
 
-        def count_at(i, m):  # collisions of ghost i in the first m rounds (no deaths)
-            if m <= L:
-                return cumulative[i][m]
-            q, r = divmod(m - mu, lam)
-            return cumulative[i][mu + r] + q * (cumulative[i][L] - cumulative[i][mu])
+        t += 1
+        alive, _ = play_round(grid, row, col, direction, collisions, limit)
 
-        # Earliest round in which some ghost reaches the limit
-        best = None
-        for i in range(n):
-            need = limit - cnt[i]
-            per = cumulative[i][L] - cumulative[i][mu]
-            if cumulative[i][L] >= need:
-                lo, hi = 0, L
-            elif per == 0:
-                continue  # never collides again in this cycle
-            else:
-                q = max((need - cumulative[i][mu] - 1) // per, 0)  # whole periods we can skip
-                lo, hi = mu + q * lam, mu + (q + 2) * lam
-                while count_at(i, hi) < need:
-                    hi += lam
-            while lo < hi:
-                mid = (lo + hi) // 2
-                if count_at(i, mid) >= need:
-                    hi = mid
-                else:
-                    lo = mid + 1
-            if best is None or lo < best:
-                best = lo
-        T = best
-
-        # jump to just before round T, then play round T for real
-        m = T - 1
-        for i in range(n):
-            cnt[i] += count_at(i, m)
-        m_eff = mu + (m - mu) % lam if m > mu else m
-        for _ in range(m_eff):
-            step(table, pos, direct)
-        now += m
-        alive = step_real(table, pos, direct, cnt, limit)
-        now += 1
-        keep = [i for i in range(n) if alive[i]]
-        pos = [pos[i] for i in keep]
-        direct = [direct[i] for i in keep]
-        cnt = [cnt[i] for i in keep]
-    return now
+        # Remove the disappeared ghosts, keeping the order of the remaining
+        if not all(alive):
+            keep = [i for i in range(n) if alive[i]]
+            row = [row[i] for i in keep]
+            col = [col[i] for i in keep]
+            direction = [direction[i] for i in keep]
+            collisions = [collisions[i] for i in keep]
+            seen = {}  # Old signatures can never match again
+    return t
 
 
 def part1(filepath: str = "../input/everybody_codes_e2026_q10_p1.txt") -> None:
