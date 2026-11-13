@@ -84,7 +84,7 @@ def min_bindings(grid: list[str], rows: int, cols: int) -> int:
     return total
 
 
-def min_bindings_with_charges(grid, rows, cols, charges: int = 2) -> int:
+def min_bindings_with_charges(grid: list[str], rows: int, cols: int, charges: int = 2) -> int:
     """Part 3: MST with pre-merged charged components."""
     n, cost = build_graph(grid, rows, cols)
     nbrs = [[] for _ in range(n + 1)]
